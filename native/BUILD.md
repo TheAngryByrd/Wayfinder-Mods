@@ -72,6 +72,22 @@ At runtime, inspect `Atlas\Binaries\Win64\MorePlayersSteamLimit.log`. It records
 hook installation, lobby calls, rich-presence return values, and invite-dialog
 activation.
 
+## EOS lobby-browser diagnostics
+
+Wayfinder ships `EOSSDK-Win64-Shipping.dll` version 1.16.3. The DLL installs
+pass-through diagnostic hooks for:
+
+- `EOS_Lobby_CreateLobby`
+- `EOS_LobbyModification_SetMaxMembers`
+- `EOS_LobbySearch_SetParameter`
+- `EOS_SessionSearch_SetParameter`
+
+These hooks currently do not alter EOS behavior. They record requested lobby
+capacity plus search attribute keys, types, values, comparison operators, API
+versions, and return codes. Open or refresh Wayfinder's lobby browser and then
+inspect `MorePlayersSteamLimit.log` to identify its capacity/full-lobby filter
+before implementing a targeted rewrite.
+
 ## Important ABI warning
 
 The source contains a small compatibility definition matching UE4SS 3.0.1's

@@ -42,10 +42,13 @@ C++ interface. The native companion hooks the runtime-verified
 `ISteamMatchmaking009::SetLobbyMemberLimit` slot and avoids unverified vtable
 methods.
 
+The native companion also contains read-only EOS 1.16.3 diagnostics for lobby
+creation, capacity updates, and lobby/session search parameters. These are used
+to identify Wayfinder's in-game lobby-browser filters before changing them.
+
 ## Attribution
 
 The Lua session-limit approach is based on the More Players mod by FuniWF. This
 repository contains a local compatibility implementation and native Steam lobby
 companion. Review the original author's permissions before publishing or
 redistributing modified assets.
-

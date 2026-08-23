@@ -30,6 +30,47 @@ using GetNumLobbyMembersFn = int(__cdecl*)(void*, SteamId);
 using GetLobbyMemberLimitFn = int(__cdecl*)(void*, SteamId);
 using GetLobbyOwnerFn = SteamId(__cdecl*)(void*, SteamId);
 
+// EOS SDK 1.16.3 C ABI prefixes used only for diagnostics. These mirror the
+// public EOS headers; trailing fields are intentionally not accessed.
+using EosResult = std::int32_t;
+struct EosLobbyCreateOptionsPrefix
+{
+    std::int32_t ApiVersion;
+    std::int32_t Padding;
+    void* LocalUserId;
+    std::uint32_t MaxLobbyMembers;
+};
+struct EosSetMaxMembersOptions
+{
+    std::int32_t ApiVersion;
+    std::uint32_t MaxMembers;
+};
+union EosAttributeValue
+{
+    std::int64_t AsInt64;
+    double AsDouble;
+    std::int32_t AsBool;
+    const char* AsUtf8;
+};
+struct EosAttributeData
+{
+    std::int32_t ApiVersion;
+    std::int32_t Padding;
+    const char* Key;
+    EosAttributeValue Value;
+    std::int32_t ValueType;
+};
+struct EosSearchSetParameterOptions
+{
+    std::int32_t ApiVersion;
+    std::int32_t Padding;
+    const EosAttributeData* Parameter;
+    std::int32_t ComparisonOp;
+};
+using EosLobbyCreateFn = void(__cdecl*)(void*, const EosLobbyCreateOptionsPrefix*, void*, void*);
+using EosSetMaxMembersFn = EosResult(__cdecl*)(void*, const EosSetMaxMembersOptions*);
+using EosSearchSetParameterFn = EosResult(__cdecl*)(void*, const EosSearchSetParameterOptions*);
+
 CreateLobbyFn g_create_lobby{};
 SetLobbyMemberLimitFn g_set_limit{};
 SetLobbyJoinableFn g_set_joinable{};
@@ -40,6 +81,10 @@ ActivateInviteDialogFn g_activate_invite_dialog{};
 GetNumLobbyMembersFn g_get_num_lobby_members{};
 GetLobbyMemberLimitFn g_get_lobby_member_limit{};
 GetLobbyOwnerFn g_get_lobby_owner{};
+EosLobbyCreateFn g_eos_lobby_create{};
+EosSetMaxMembersFn g_eos_set_max_members{};
+EosSearchSetParameterFn g_eos_lobby_search_parameter{};
+EosSearchSetParameterFn g_eos_session_search_parameter{};
 std::atomic<int> g_limit{25};
 bool g_mh{};
 std::mutex g_log_mutex;
@@ -105,6 +150,85 @@ void log(const std::string& message)
     OutputDebugStringA(line.c_str());
     std::ofstream file("MorePlayersSteamLimit.log", std::ios::app);
     file << line;
+}
+
+std::string safe_utf8(const char* value)
+{
+    if (!value || IsBadStringPtrA(value, 1)) return "<null/invalid>";
+    return std::string(value, strnlen_s(value, 256));
+}
+
+std::string eos_attribute_value(const EosAttributeData* attribute)
+{
+    if (!attribute) return "<no attribute>";
+    std::ostringstream out;
+    // EOS_EAttributeType: Boolean=0, Int64=1, Double=2, String=3.
+    switch (attribute->ValueType)
+    {
+    case 0: out << (attribute->Value.AsBool ? "true" : "false"); break;
+    case 1: out << attribute->Value.AsInt64; break;
+    case 2: out << attribute->Value.AsDouble; break;
+    case 3: out << '"' << safe_utf8(attribute->Value.AsUtf8) << '"'; break;
+    default: out << "<unknown type>"; break;
+    }
+    return out.str();
+}
+
+void __cdecl eos_lobby_create_hook(void* handle, const EosLobbyCreateOptionsPrefix* options,
+    void* client_data, void* completion)
+{
+    if (options)
+    {
+        log("EOS Lobby_CreateLobby api=" + std::to_string(options->ApiVersion)
+            + " max_members=" + std::to_string(options->MaxLobbyMembers));
+    }
+    else log("EOS Lobby_CreateLobby options=<null>");
+    g_eos_lobby_create(handle, options, client_data, completion);
+}
+
+EosResult __cdecl eos_set_max_members_hook(void* modification, const EosSetMaxMembersOptions* options)
+{
+    if (options)
+    {
+        log("EOS LobbyModification_SetMaxMembers api=" + std::to_string(options->ApiVersion)
+            + " max_members=" + std::to_string(options->MaxMembers));
+    }
+    else log("EOS LobbyModification_SetMaxMembers options=<null>");
+    const EosResult result = g_eos_set_max_members(modification, options);
+    log("EOS LobbyModification_SetMaxMembers result=" + std::to_string(result));
+    return result;
+}
+
+void log_eos_search(const char* source, const EosSearchSetParameterOptions* options)
+{
+    if (!options || !options->Parameter)
+    {
+        log(std::string("EOS ") + source + " options/parameter=<null>");
+        return;
+    }
+    const auto* attribute = options->Parameter;
+    log(std::string("EOS ") + source + " options_api=" + std::to_string(options->ApiVersion)
+        + " attribute_api=" + std::to_string(attribute->ApiVersion)
+        + " key=" + safe_utf8(attribute->Key)
+        + " type=" + std::to_string(attribute->ValueType)
+        + " value=" + eos_attribute_value(attribute)
+        + " comparison=" + std::to_string(options->ComparisonOp));
+}
+
+EosResult __cdecl eos_lobby_search_parameter_hook(void* search, const EosSearchSetParameterOptions* options)
+{
+    log_eos_search("LobbySearch_SetParameter", options);
+    const EosResult result = g_eos_lobby_search_parameter(search, options);
+    log("EOS LobbySearch_SetParameter result=" + std::to_string(result));
+    return result;
+}
+
+EosResult __cdecl eos_session_search_parameter_hook(void* search, const EosSearchSetParameterOptions* options)
+{
+    log_eos_search("SessionSearch_SetParameter", options);
+    const EosResult result = g_eos_session_search_parameter(search, options);
+    log("EOS SessionSearch_SetParameter result=" + std::to_string(result));
+    return result;
 }
 
 void publish_invite_state(void* matchmaking, SteamId lobby)
@@ -230,6 +354,19 @@ void install()
         + " invite_dialog=" + (g_activate_invite_dialog ? "1" : "0")
         + " member_count=" + (g_get_num_lobby_members ? "1" : "0"));
     log("Post-hook diagnostics avoid unproven vtable getters");
+
+    HMODULE eos = GetModuleHandleW(L"EOSSDK-Win64-Shipping.dll");
+    if (!eos)
+    {
+        log("EOS diagnostics unavailable: EOSSDK-Win64-Shipping.dll not loaded");
+        return;
+    }
+    log("Installing EOS SDK 1.16.3 diagnostics module=" + pointer_details(eos));
+    hook(eos, "EOS_Lobby_CreateLobby", reinterpret_cast<void*>(&eos_lobby_create_hook), reinterpret_cast<void**>(&g_eos_lobby_create));
+    hook(eos, "EOS_LobbyModification_SetMaxMembers", reinterpret_cast<void*>(&eos_set_max_members_hook), reinterpret_cast<void**>(&g_eos_set_max_members));
+    hook(eos, "EOS_LobbySearch_SetParameter", reinterpret_cast<void*>(&eos_lobby_search_parameter_hook), reinterpret_cast<void**>(&g_eos_lobby_search_parameter));
+    hook(eos, "EOS_SessionSearch_SetParameter", reinterpret_cast<void*>(&eos_session_search_parameter_hook), reinterpret_cast<void**>(&g_eos_session_search_parameter));
+    log("EOS diagnostics are read-only; options are forwarded unchanged");
 }
 
 // ABI-compatible subset of UE4SS 3.0.1's CppUserModBase. The UE4SS loader
