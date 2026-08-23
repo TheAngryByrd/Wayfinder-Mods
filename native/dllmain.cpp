@@ -87,6 +87,8 @@ EosSearchSetParameterFn g_eos_lobby_search_parameter{};
 EosSearchSetParameterFn g_eos_session_search_parameter{};
 std::atomic<int> g_limit{25};
 bool g_mh{};
+std::atomic<bool> g_eos_installed{false};
+std::atomic<bool> g_eos_wait_logged{false};
 std::mutex g_log_mutex;
 std::unordered_set<SteamId> g_invite_dialog_shown;
 
@@ -322,6 +324,26 @@ bool hook_address(void* target, const char* label, void* replacement, void** ori
     return true;
 }
 
+void install_eos_diagnostics()
+{
+    if (g_eos_installed.load()) return;
+    HMODULE eos = GetModuleHandleW(L"EOSSDK-Win64-Shipping.dll");
+    if (!eos)
+    {
+        if (!g_eos_wait_logged.exchange(true))
+            log("EOS diagnostics waiting for EOSSDK-Win64-Shipping.dll");
+        return;
+    }
+
+    log("Installing EOS SDK 1.16.3 diagnostics module=" + pointer_details(eos));
+    hook(eos, "EOS_Lobby_CreateLobby", reinterpret_cast<void*>(&eos_lobby_create_hook), reinterpret_cast<void**>(&g_eos_lobby_create));
+    hook(eos, "EOS_LobbyModification_SetMaxMembers", reinterpret_cast<void*>(&eos_set_max_members_hook), reinterpret_cast<void**>(&g_eos_set_max_members));
+    hook(eos, "EOS_LobbySearch_SetParameter", reinterpret_cast<void*>(&eos_lobby_search_parameter_hook), reinterpret_cast<void**>(&g_eos_lobby_search_parameter));
+    hook(eos, "EOS_SessionSearch_SetParameter", reinterpret_cast<void*>(&eos_session_search_parameter_hook), reinterpret_cast<void**>(&g_eos_session_search_parameter));
+    g_eos_installed = true;
+    log("EOS diagnostics installed; options are forwarded unchanged");
+}
+
 void install()
 {
     HMODULE steam = GetModuleHandleW(L"steam_api64.dll");
@@ -355,18 +377,7 @@ void install()
         + " member_count=" + (g_get_num_lobby_members ? "1" : "0"));
     log("Post-hook diagnostics avoid unproven vtable getters");
 
-    HMODULE eos = GetModuleHandleW(L"EOSSDK-Win64-Shipping.dll");
-    if (!eos)
-    {
-        log("EOS diagnostics unavailable: EOSSDK-Win64-Shipping.dll not loaded");
-        return;
-    }
-    log("Installing EOS SDK 1.16.3 diagnostics module=" + pointer_details(eos));
-    hook(eos, "EOS_Lobby_CreateLobby", reinterpret_cast<void*>(&eos_lobby_create_hook), reinterpret_cast<void**>(&g_eos_lobby_create));
-    hook(eos, "EOS_LobbyModification_SetMaxMembers", reinterpret_cast<void*>(&eos_set_max_members_hook), reinterpret_cast<void**>(&g_eos_set_max_members));
-    hook(eos, "EOS_LobbySearch_SetParameter", reinterpret_cast<void*>(&eos_lobby_search_parameter_hook), reinterpret_cast<void**>(&g_eos_lobby_search_parameter));
-    hook(eos, "EOS_SessionSearch_SetParameter", reinterpret_cast<void*>(&eos_session_search_parameter_hook), reinterpret_cast<void**>(&g_eos_session_search_parameter));
-    log("EOS diagnostics are read-only; options are forwarded unchanged");
+    install_eos_diagnostics();
 }
 
 // ABI-compatible subset of UE4SS 3.0.1's CppUserModBase. The UE4SS loader
@@ -387,7 +398,7 @@ public:
     {
         if (g_mh) { MH_DisableHook(MH_ALL_HOOKS); MH_Uninitialize(); }
     }
-    virtual void on_update() {}
+    virtual void on_update() { if (g_mh && !g_eos_installed.load()) install_eos_diagnostics(); }
     virtual void on_unreal_init() {}
     virtual void on_ui_init() {}
     virtual void on_program_start() { install(); }
