@@ -32,7 +32,7 @@ Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
 
 ## Build
 
-See [`native/BUILD.md`](native/BUILD.md). The resulting DLL should be copied to
+See [`native/README.md`](native/README.md). The resulting DLL should be copied to
 `MorePlayers/dlls/main.dll`.
 
 ## Technical notes
