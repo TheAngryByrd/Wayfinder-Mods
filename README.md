@@ -10,10 +10,13 @@ Edit `MorePlayers/config.ini` before launching Wayfinder:
 
 ```ini
 MaxPlayers=25
+PartyUiDiagnostics=1
 ```
 
 Supported values are 3 through 25. The Lua script and native DLL read this same
-setting at startup.
+setting at startup. Party UI diagnostics run after each player joins. Press F9
+to record an additional snapshot in `UE4SS.log`. Set `PartyUiDiagnostics=0` to
+disable these snapshots.
 
 ## Install
 
