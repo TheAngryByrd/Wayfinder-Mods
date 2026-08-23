@@ -1,5 +1,6 @@
 src/native/build/
 dist/
+lode/tmp/
 .vs/
 *.user
 *.suo
