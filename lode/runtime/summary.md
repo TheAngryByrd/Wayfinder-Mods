@@ -30,4 +30,4 @@ Mods/MorePlayers/config.ini
 - The native DLL keeps its separate diagnostic log.
 - UE4SS records Lua output in `UE4SS.log`.
 
-Related: [Session capacity](session-capacity.md), [Party UI](party-ui.md), and [Project summary](../summary.md).
+Related: [Session capacity](session-capacity.md), [Party UI](party-ui.md), [Runtime diagnostics](diagnostics.md), and [Project summary](../summary.md).

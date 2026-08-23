@@ -12,6 +12,7 @@ flowchart TD
     Map --> Runtime[runtime/summary.md]
     Runtime --> Session[runtime/session-capacity.md]
     Runtime --> UI[runtime/party-ui.md]
+    Runtime --> Diagnostics[runtime/diagnostics.md]
     Map --> Distribution[distribution/summary.md]
 ```
 
@@ -27,6 +28,7 @@ flowchart TD
 - [Runtime summary](runtime/summary.md)
 - [Session capacity](runtime/session-capacity.md)
 - [Party UI](runtime/party-ui.md)
+- [Runtime diagnostics](runtime/diagnostics.md)
 
 ## Distribution
 

@@ -20,6 +20,8 @@ files.
 <!-- toc:start -->
 - [Requirements](#requirements)
 - [Install](#install)
+- [Confirm the mod is working](#confirm-the-mod-is-working)
+  - [Troubleshooting](#troubleshooting)
 - [Configuration](#configuration)
 - [Logs](#logs)
 <!-- toc:end -->
@@ -48,6 +50,64 @@ The archive installs the mod at:
 
 ```text
 Atlas\Binaries\Win64\Mods\MorePlayers
+```
+
+## Confirm the mod is working
+
+Start Wayfinder. Open this file:
+
+```text
+Atlas\Binaries\Win64\UE4SS.log
+```
+
+Confirm that the file contains messages similar to these:
+
+```text
+[MorePlayers] Config MaxPlayers=25
+[MorePlayers] Mod loaded
+[MorePlayers] Engine MaxPlayers: 25
+```
+
+Open this file:
+
+```text
+Atlas\Binaries\Win64\MorePlayersSteamLimit.log
+```
+
+Confirm that the file contains these startup messages:
+
+```text
+[MorePlayersSteamLimit] Native companion starting
+[MorePlayersSteamLimit] Config MaxPlayers=25
+[MorePlayersSteamLimit] EOS hooks installed; configured capacity overrides enabled
+```
+
+Host a public or invite-only game. Confirm that the native log contains these
+session messages:
+
+```text
+[MorePlayersSteamLimit] EOS advertised NumPublicConnections 3 -> 25
+[MorePlayersSteamLimit] SetLobbyMemberLimit 3 -> 25 lobby=...
+[MorePlayersSteamLimit] SetLobbyMemberLimit result=1
+```
+
+Repeated `3 -> 25` messages are normal. Wayfinder submits its original limit
+each time it updates the session. The mod replaces each submitted value.
+
+### Troubleshooting
+
+- If `UE4SS.log` does not exist, check the UE4SS installation and custom signature.
+- If `Mod loaded` is absent, check the `MorePlayers` directory and `enabled.txt`.
+- If the native log does not exist, check `MorePlayers\dlls\main.dll`.
+- If Steam messages are absent, host a game before you check the log.
+- If `SetLobbyMemberLimit result=0` appears, Steam rejected the limit update.
+- Press F9 to record a party UI snapshot when UI diagnostics are enabled.
+
+For a Wayfinder crash, collect these files:
+
+```text
+%LOCALAPPDATA%\Wayfinder\Saved\Logs\Atlas.log
+%LOCALAPPDATA%\Wayfinder\Saved\Crashes
 ```
 
 ## Configuration
