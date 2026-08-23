@@ -81,12 +81,16 @@ pass-through diagnostic hooks for:
 - `EOS_LobbyModification_SetMaxMembers`
 - `EOS_LobbySearch_SetParameter`
 - `EOS_SessionSearch_SetParameter`
+- `EOS_Sessions_CreateSessionModification`
+- `EOS_Sessions_UpdateSessionModification`
+- `EOS_SessionModification_SetMaxPlayers`
+- `EOS_SessionModification_AddAttribute`
 
 These hooks currently do not alter EOS behavior. They record requested lobby
-capacity plus search attribute keys, types, values, comparison operators, API
-versions, and return codes. Open or refresh Wayfinder's lobby browser and then
-inspect `MorePlayersSteamLimit.log` to identify its capacity/full-lobby filter
-before implementing a targeted rewrite.
+capacity plus search and advertised-session attribute keys, types, values,
+comparison operators, API versions, modification handles, and return codes.
+Host a public game and open or refresh Wayfinder's lobby browser, then inspect
+`MorePlayersSteamLimit.log` before implementing a targeted rewrite.
 
 ## Important ABI warning
 

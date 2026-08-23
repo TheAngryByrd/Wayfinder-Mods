@@ -67,9 +67,39 @@ struct EosSearchSetParameterOptions
     const EosAttributeData* Parameter;
     std::int32_t ComparisonOp;
 };
+struct EosCreateSessionModificationOptionsPrefix
+{
+    std::int32_t ApiVersion;
+    std::int32_t Padding;
+    const char* SessionName;
+    const char* BucketId;
+    std::uint32_t MaxPlayers;
+};
+struct EosUpdateSessionModificationOptions
+{
+    std::int32_t ApiVersion;
+    std::int32_t Padding;
+    const char* SessionName;
+};
+struct EosSessionSetMaxPlayersOptions
+{
+    std::int32_t ApiVersion;
+    std::uint32_t MaxPlayers;
+};
+struct EosSessionAddAttributeOptions
+{
+    std::int32_t ApiVersion;
+    std::int32_t Padding;
+    const EosAttributeData* SessionAttribute;
+    std::int32_t AdvertisementType;
+};
 using EosLobbyCreateFn = void(__cdecl*)(void*, const EosLobbyCreateOptionsPrefix*, void*, void*);
 using EosSetMaxMembersFn = EosResult(__cdecl*)(void*, const EosSetMaxMembersOptions*);
 using EosSearchSetParameterFn = EosResult(__cdecl*)(void*, const EosSearchSetParameterOptions*);
+using EosCreateSessionModificationFn = EosResult(__cdecl*)(void*, const EosCreateSessionModificationOptionsPrefix*, void**);
+using EosUpdateSessionModificationFn = EosResult(__cdecl*)(void*, const EosUpdateSessionModificationOptions*, void**);
+using EosSessionSetMaxPlayersFn = EosResult(__cdecl*)(void*, const EosSessionSetMaxPlayersOptions*);
+using EosSessionAddAttributeFn = EosResult(__cdecl*)(void*, const EosSessionAddAttributeOptions*);
 
 CreateLobbyFn g_create_lobby{};
 SetLobbyMemberLimitFn g_set_limit{};
@@ -85,6 +115,10 @@ EosLobbyCreateFn g_eos_lobby_create{};
 EosSetMaxMembersFn g_eos_set_max_members{};
 EosSearchSetParameterFn g_eos_lobby_search_parameter{};
 EosSearchSetParameterFn g_eos_session_search_parameter{};
+EosCreateSessionModificationFn g_eos_create_session_modification{};
+EosUpdateSessionModificationFn g_eos_update_session_modification{};
+EosSessionSetMaxPlayersFn g_eos_session_set_max_players{};
+EosSessionAddAttributeFn g_eos_session_add_attribute{};
 std::atomic<int> g_limit{25};
 bool g_mh{};
 std::atomic<bool> g_eos_installed{false};
@@ -233,6 +267,69 @@ EosResult __cdecl eos_session_search_parameter_hook(void* search, const EosSearc
     return result;
 }
 
+EosResult __cdecl eos_create_session_modification_hook(void* sessions,
+    const EosCreateSessionModificationOptionsPrefix* options, void** out_modification)
+{
+    if (options)
+    {
+        log("EOS Sessions_CreateSessionModification api=" + std::to_string(options->ApiVersion)
+            + " session=" + safe_utf8(options->SessionName)
+            + " bucket=" + safe_utf8(options->BucketId)
+            + " max_players=" + std::to_string(options->MaxPlayers));
+    }
+    else log("EOS Sessions_CreateSessionModification options=<null>");
+    const EosResult result = g_eos_create_session_modification(sessions, options, out_modification);
+    log("EOS Sessions_CreateSessionModification result=" + std::to_string(result)
+        + " modification=" + pointer_details(out_modification ? *out_modification : nullptr));
+    return result;
+}
+
+EosResult __cdecl eos_update_session_modification_hook(void* sessions,
+    const EosUpdateSessionModificationOptions* options, void** out_modification)
+{
+    if (options)
+        log("EOS Sessions_UpdateSessionModification api=" + std::to_string(options->ApiVersion)
+            + " session=" + safe_utf8(options->SessionName));
+    else log("EOS Sessions_UpdateSessionModification options=<null>");
+    const EosResult result = g_eos_update_session_modification(sessions, options, out_modification);
+    log("EOS Sessions_UpdateSessionModification result=" + std::to_string(result)
+        + " modification=" + pointer_details(out_modification ? *out_modification : nullptr));
+    return result;
+}
+
+EosResult __cdecl eos_session_set_max_players_hook(void* modification,
+    const EosSessionSetMaxPlayersOptions* options)
+{
+    if (options)
+        log("EOS SessionModification_SetMaxPlayers api=" + std::to_string(options->ApiVersion)
+            + " max_players=" + std::to_string(options->MaxPlayers)
+            + " modification=" + pointer_details(modification));
+    else log("EOS SessionModification_SetMaxPlayers options=<null>");
+    const EosResult result = g_eos_session_set_max_players(modification, options);
+    log("EOS SessionModification_SetMaxPlayers result=" + std::to_string(result));
+    return result;
+}
+
+EosResult __cdecl eos_session_add_attribute_hook(void* modification,
+    const EosSessionAddAttributeOptions* options)
+{
+    if (options && options->SessionAttribute)
+    {
+        const auto* attribute = options->SessionAttribute;
+        log("EOS SessionModification_AddAttribute options_api=" + std::to_string(options->ApiVersion)
+            + " attribute_api=" + std::to_string(attribute->ApiVersion)
+            + " key=" + safe_utf8(attribute->Key)
+            + " type=" + std::to_string(attribute->ValueType)
+            + " value=" + eos_attribute_value(attribute)
+            + " advertisement=" + std::to_string(options->AdvertisementType)
+            + " modification=" + pointer_details(modification));
+    }
+    else log("EOS SessionModification_AddAttribute options/attribute=<null>");
+    const EosResult result = g_eos_session_add_attribute(modification, options);
+    log("EOS SessionModification_AddAttribute result=" + std::to_string(result));
+    return result;
+}
+
 void publish_invite_state(void* matchmaking, SteamId lobby)
 {
     if (!lobby || !g_steam_friends || !g_set_rich_presence) return;
@@ -340,6 +437,10 @@ void install_eos_diagnostics()
     hook(eos, "EOS_LobbyModification_SetMaxMembers", reinterpret_cast<void*>(&eos_set_max_members_hook), reinterpret_cast<void**>(&g_eos_set_max_members));
     hook(eos, "EOS_LobbySearch_SetParameter", reinterpret_cast<void*>(&eos_lobby_search_parameter_hook), reinterpret_cast<void**>(&g_eos_lobby_search_parameter));
     hook(eos, "EOS_SessionSearch_SetParameter", reinterpret_cast<void*>(&eos_session_search_parameter_hook), reinterpret_cast<void**>(&g_eos_session_search_parameter));
+    hook(eos, "EOS_Sessions_CreateSessionModification", reinterpret_cast<void*>(&eos_create_session_modification_hook), reinterpret_cast<void**>(&g_eos_create_session_modification));
+    hook(eos, "EOS_Sessions_UpdateSessionModification", reinterpret_cast<void*>(&eos_update_session_modification_hook), reinterpret_cast<void**>(&g_eos_update_session_modification));
+    hook(eos, "EOS_SessionModification_SetMaxPlayers", reinterpret_cast<void*>(&eos_session_set_max_players_hook), reinterpret_cast<void**>(&g_eos_session_set_max_players));
+    hook(eos, "EOS_SessionModification_AddAttribute", reinterpret_cast<void*>(&eos_session_add_attribute_hook), reinterpret_cast<void**>(&g_eos_session_add_attribute));
     g_eos_installed = true;
     log("EOS diagnostics installed; options are forwarded unchanged");
 }
