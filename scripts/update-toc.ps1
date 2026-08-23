@@ -2,7 +2,8 @@
 param(
     [string[]] $Path = @(
         (Join-Path (Split-Path $PSScriptRoot -Parent) 'README.md'),
-        (Join-Path (Split-Path $PSScriptRoot -Parent) 'packaging\NexusMods\README.md')
+        (Join-Path (Split-Path $PSScriptRoot -Parent) 'packaging\NexusMods\README.md'),
+        (Join-Path (Split-Path $PSScriptRoot -Parent) 'src\native\README.md')
     )
 )
 

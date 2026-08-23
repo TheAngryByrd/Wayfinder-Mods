@@ -18,6 +18,16 @@ It does not open the Steam overlay automatically. Both
 `../MorePlayers/Scripts/main.lua` and the compiled DLL read the same `MaxPlayers`
 setting.
 
+## Contents
+
+<!-- toc:start -->
+- [Requirements](#requirements)
+- [Build commands](#build-commands)
+- [Validation](#validation)
+- [EOS lobby-browser diagnostics](#eos-lobby-browser-diagnostics)
+- [Important ABI warning](#important-abi-warning)
+<!-- toc:end -->
+
 ## Requirements
 
 - Visual Studio 2022 Build Tools or Visual Studio 2022
@@ -27,16 +37,28 @@ setting.
 
 ## Build commands
 
-Open **Developer PowerShell for VS 2022**, change into this `source` directory,
-and run:
+Use the root build script for a complete Nexus Mods distribution. From the
+repository root, run:
 
 ```powershell
 .\build.ps1
 ```
 
-The script configures and compiles an x64 Release build. It then copies the
-result into `dist\NexusMods`. Use `-NoCopy` to compile without copying the DLL.
-Use `-Configuration Debug` for a debug build.
+This command compiles the DLL, stages all required files, and creates the Nexus
+Mods ZIP file.
+
+For a native-only build, open **Developer PowerShell for VS 2022**. Change to
+`src\native`, then run:
+
+```powershell
+.\build.ps1
+```
+
+The native script configures and compiles an x64 Release build. It copies only
+the DLL into `dist\NexusMods`. It does not stage the other mod files.
+
+Use `-NoCopy` to compile without copying the DLL. Use `-Configuration Debug`
+for a debug build.
 
 The equivalent manual commands are:
 
@@ -51,7 +73,7 @@ The output is:
 build\Release\MorePlayersSteamLimit.dll
 ```
 
-The root `build.ps1` script copies it to:
+The root build script copies it to:
 
 ```text
 dist\NexusMods\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll
