@@ -11,7 +11,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 namespace
@@ -25,7 +24,6 @@ using InviteUserToLobbyFn = bool(__cdecl*)(void*, SteamId, SteamId);
 using SteamMatchmakingFn = void*(__cdecl*)();
 using SteamFriendsFn = void*(__cdecl*)();
 using SetRichPresenceFn = bool(__cdecl*)(void*, const char*, const char*);
-using ActivateInviteDialogFn = void(__cdecl*)(void*, SteamId);
 using GetNumLobbyMembersFn = int(__cdecl*)(void*, SteamId);
 using GetLobbyMemberLimitFn = int(__cdecl*)(void*, SteamId);
 using GetLobbyOwnerFn = SteamId(__cdecl*)(void*, SteamId);
@@ -107,7 +105,6 @@ SetLobbyJoinableFn g_set_joinable{};
 InviteUserToLobbyFn g_invite_user{};
 SteamFriendsFn g_steam_friends{};
 SetRichPresenceFn g_set_rich_presence{};
-ActivateInviteDialogFn g_activate_invite_dialog{};
 GetNumLobbyMembersFn g_get_num_lobby_members{};
 GetLobbyMemberLimitFn g_get_lobby_member_limit{};
 GetLobbyOwnerFn g_get_lobby_owner{};
@@ -124,7 +121,6 @@ bool g_mh{};
 std::atomic<bool> g_eos_installed{false};
 std::atomic<bool> g_eos_wait_logged{false};
 std::mutex g_log_mutex;
-std::unordered_set<SteamId> g_invite_dialog_shown;
 
 int limit() { return std::clamp(g_limit.load(), 3, 25); }
 void log(const std::string& message);
@@ -380,11 +376,7 @@ void publish_invite_state(void* matchmaking, SteamId lobby)
         << " group=" << group_ok << " size=" << size_ok;
     log(out.str());
 
-    if (g_activate_invite_dialog && g_invite_dialog_shown.insert(lobby).second)
-    {
-        g_activate_invite_dialog(friends, lobby);
-        log("Opened Steam invite dialog for lobby " + lobby_text);
-    }
+    log("Steam join presence is ready; invite dialog remains user-controlled");
 }
 
 SteamApiCall __cdecl create_hook(void* self, int type, int requested)
@@ -473,7 +465,7 @@ void install_eos_diagnostics()
     hook(eos, "EOS_SessionModification_SetMaxPlayers", reinterpret_cast<void*>(&eos_session_set_max_players_hook), reinterpret_cast<void**>(&g_eos_session_set_max_players));
     hook(eos, "EOS_SessionModification_AddAttribute", reinterpret_cast<void*>(&eos_session_add_attribute_hook), reinterpret_cast<void**>(&g_eos_session_add_attribute));
     g_eos_installed = true;
-    log("EOS diagnostics installed; options are forwarded unchanged");
+    log("EOS hooks installed; configured capacity overrides enabled");
 }
 
 void install()
@@ -501,11 +493,9 @@ void install()
 
     g_steam_friends = reinterpret_cast<SteamFriendsFn>(GetProcAddress(steam, "SteamAPI_SteamFriends_v017"));
     g_set_rich_presence = reinterpret_cast<SetRichPresenceFn>(GetProcAddress(steam, "SteamAPI_ISteamFriends_SetRichPresence"));
-    g_activate_invite_dialog = reinterpret_cast<ActivateInviteDialogFn>(GetProcAddress(steam, "SteamAPI_ISteamFriends_ActivateGameOverlayInviteDialog"));
     g_get_num_lobby_members = reinterpret_cast<GetNumLobbyMembersFn>(GetProcAddress(steam, "SteamAPI_ISteamMatchmaking_GetNumLobbyMembers"));
     log(std::string("Invite API exports: friends=") + (g_steam_friends ? "1" : "0")
         + " rich_presence=" + (g_set_rich_presence ? "1" : "0")
-        + " invite_dialog=" + (g_activate_invite_dialog ? "1" : "0")
         + " member_count=" + (g_get_num_lobby_members ? "1" : "0"));
     log("Post-hook diagnostics avoid unproven vtable getters");
 

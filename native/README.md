@@ -10,11 +10,11 @@ This companion therefore hooks only the runtime-proven method:
 The crash-run trace showed this slot receiving `(this, lobby, 3)`, returning
 success, and reporting a resulting limit of 25. No other vtable slots or getters
 are called. The captured lobby ID is used to publish Steam `connect` rich
-presence and open Steam's native lobby invite dialog.
+presence while leaving the invite dialog under user control.
 
 The hook raises the requested Steam lobby capacity to the value in
-`../config.ini`, publishes a `+connect_lobby` Steam Rich Presence value, and
-opens Steam's native lobby invite dialog once per captured lobby. Both
+`../config.ini` and publishes a `+connect_lobby` Steam Rich Presence value.
+It does not open the Steam overlay automatically. Both
 `../Scripts/main.lua` and `../dlls/main.dll` read the same `MaxPlayers` setting.
 
 ## Requirements
@@ -69,8 +69,8 @@ dumpbin /dependents build\Release\MorePlayersSteamLimit.dll
 Confirm that it is x64 and exports both `start_mod` and `uninstall_mod`.
 
 At runtime, inspect `Atlas\Binaries\Win64\MorePlayersSteamLimit.log`. It records
-hook installation, lobby calls, rich-presence return values, and invite-dialog
-activation.
+hook installation, lobby calls, rich-presence return values, and EOS capacity
+updates.
 
 ## EOS lobby-browser diagnostics
 
