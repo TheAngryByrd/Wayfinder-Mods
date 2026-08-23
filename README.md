@@ -29,7 +29,13 @@ files.
 
 ## Configuration
 
-Edit `src/MorePlayers/config.ini` before you build the distribution:
+Close Wayfinder. Then edit the installed configuration file:
+
+```text
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\config.ini
+```
+
+Set the required values:
 
 ```ini
 MaxPlayers=25
@@ -37,9 +43,11 @@ PartyUiDiagnostics=1
 ```
 
 Supported values are 3 through 25. The Lua script and native DLL read this same
-setting at startup. Party UI diagnostics run after each player joins. Press F9
-to record an additional snapshot in `UE4SS.log`. Set `PartyUiDiagnostics=0` to
-disable these snapshots.
+setting when Wayfinder starts. Restart Wayfinder after you change the file.
+
+Party UI diagnostics run after each player joins. Press F9 to record an
+additional snapshot in `UE4SS.log`. Set `PartyUiDiagnostics=0` to disable these
+snapshots.
 
 ## Install
 
@@ -114,6 +122,12 @@ Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
 Run `build.ps1` to compile the native DLL and generate the Nexus Mods files.
 The build script also updates each generated table of contents.
 
+To change the default configuration in a new distribution, edit:
+
+```text
+src\MorePlayers\config.ini
+```
+
 ```powershell
 .\build.ps1
 ```
@@ -158,5 +172,4 @@ modified, allowing joining clients to remain unmodded.
 
 The Lua session-limit approach is based on the More Players mod by FuniWF. This
 repository contains a local compatibility implementation and native Steam lobby
-companion. Review the original author's permissions before publishing or
-redistributing modified assets.
+companion.

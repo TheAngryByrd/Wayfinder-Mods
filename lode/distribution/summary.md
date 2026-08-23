@@ -20,11 +20,19 @@ flowchart LR
 - The archive includes the Lua script, native DLL, configuration, and signature.
 - The archive does not include UE4SS binaries.
 - The Nexus README links to UE4SS 3.0.1.
+- User configuration instructions point to the installed `config.ini` file.
+- Build instructions identify `src/MorePlayers/config.ini` as the package default.
 
 ## Build example
 
 ```powershell
 .\build.ps1
+```
+
+## Configuration example
+
+```text
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\config.ini
 ```
 
 Use `-SkipNativeBuild` to reuse the current DLL. Use `-NoArchive` to generate
