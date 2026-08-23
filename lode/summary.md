@@ -18,6 +18,7 @@ flowchart LR
 
 - `MaxPlayers` supports values from 3 through 25.
 - The host installs the mod. Joining clients do not need it for capacity.
+- Wayfinder scales the game for the number of connected players.
 - UE4SS 3.0.1 loads the Lua script and native DLL.
 - The custom `GUObjectArray.lua` signature is required for Wayfinder.
 - `build.ps1` generates the Nexus Mods directory and ZIP file.

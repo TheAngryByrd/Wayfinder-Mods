@@ -1,7 +1,8 @@
 # Wayfinder MorePlayers
 
 This mod lets a Wayfinder host play with more than three people. Set the maximum
-player count from 3 through 25. Only the host needs the mod.
+player count from 3 through 25. Only the host needs the mod. Wayfinder
+automatically scales the game for the number of connected players.
 
 While Wayfinder runs, the mod changes:
 
