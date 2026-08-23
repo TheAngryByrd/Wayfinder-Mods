@@ -1,8 +1,18 @@
 # Wayfinder MorePlayers
 
-Local Wayfinder/UE4SS mod that raises Unreal session limits and the associated
-Steam lobby member limit. It also publishes Steam lobby rich presence so the
-native invite flow can target the active lobby.
+This mod lets a Wayfinder host play with more than three people. Set the maximum
+player count from 3 through 25. Only the host needs the mod.
+
+While Wayfinder runs, the mod changes:
+
+- Wayfinder's maximum player setting.
+- The number of public spaces reported by the online session.
+- The maximum number of members in the Steam lobby.
+- The Steam join information used by friend invitations.
+
+The mod installs a Lua script, a native DLL, and a Wayfinder-specific UE4SS
+signature. It does not replace the Wayfinder executable, game packages, or save
+files.
 
 ## Configuration
 
