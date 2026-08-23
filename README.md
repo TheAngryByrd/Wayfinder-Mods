@@ -42,9 +42,10 @@ C++ interface. The native companion hooks the runtime-verified
 `ISteamMatchmaking009::SetLobbyMemberLimit` slot and avoids unverified vtable
 methods.
 
-The native companion also contains read-only EOS 1.16.3 diagnostics for lobby
-creation, capacity updates, and lobby/session search parameters. These are used
-to identify Wayfinder's in-game lobby-browser filters before changing them.
+The native companion raises the host's EOS 1.16.3 session capacity and
+advertised `NumPublicConnections` value. EOS lobby/session search hooks remain
+read-only diagnostics; client search filters and lobby-browser UI are not
+modified, allowing joining clients to remain unmodded.
 
 ## Attribution
 

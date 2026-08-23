@@ -270,15 +270,22 @@ EosResult __cdecl eos_session_search_parameter_hook(void* search, const EosSearc
 EosResult __cdecl eos_create_session_modification_hook(void* sessions,
     const EosCreateSessionModificationOptionsPrefix* options, void** out_modification)
 {
+    std::uint32_t original_max{};
+    EosCreateSessionModificationOptionsPrefix* mutable_options{};
     if (options)
     {
+        original_max = options->MaxPlayers;
+        const std::uint32_t effective = std::max(original_max, static_cast<std::uint32_t>(limit()));
+        mutable_options = const_cast<EosCreateSessionModificationOptionsPrefix*>(options);
+        mutable_options->MaxPlayers = effective;
         log("EOS Sessions_CreateSessionModification api=" + std::to_string(options->ApiVersion)
             + " session=" + safe_utf8(options->SessionName)
             + " bucket=" + safe_utf8(options->BucketId)
-            + " max_players=" + std::to_string(options->MaxPlayers));
+            + " max_players=" + std::to_string(original_max) + " -> " + std::to_string(effective));
     }
     else log("EOS Sessions_CreateSessionModification options=<null>");
     const EosResult result = g_eos_create_session_modification(sessions, options, out_modification);
+    if (mutable_options) mutable_options->MaxPlayers = original_max;
     log("EOS Sessions_CreateSessionModification result=" + std::to_string(result)
         + " modification=" + pointer_details(out_modification ? *out_modification : nullptr));
     return result;
@@ -300,12 +307,21 @@ EosResult __cdecl eos_update_session_modification_hook(void* sessions,
 EosResult __cdecl eos_session_set_max_players_hook(void* modification,
     const EosSessionSetMaxPlayersOptions* options)
 {
+    std::uint32_t original_max{};
+    EosSessionSetMaxPlayersOptions* mutable_options{};
     if (options)
+    {
+        original_max = options->MaxPlayers;
+        const std::uint32_t effective = std::max(original_max, static_cast<std::uint32_t>(limit()));
+        mutable_options = const_cast<EosSessionSetMaxPlayersOptions*>(options);
+        mutable_options->MaxPlayers = effective;
         log("EOS SessionModification_SetMaxPlayers api=" + std::to_string(options->ApiVersion)
-            + " max_players=" + std::to_string(options->MaxPlayers)
+            + " max_players=" + std::to_string(original_max) + " -> " + std::to_string(effective)
             + " modification=" + pointer_details(modification));
+    }
     else log("EOS SessionModification_SetMaxPlayers options=<null>");
     const EosResult result = g_eos_session_set_max_players(modification, options);
+    if (mutable_options) mutable_options->MaxPlayers = original_max;
     log("EOS SessionModification_SetMaxPlayers result=" + std::to_string(result));
     return result;
 }
@@ -313,12 +329,26 @@ EosResult __cdecl eos_session_set_max_players_hook(void* modification,
 EosResult __cdecl eos_session_add_attribute_hook(void* modification,
     const EosSessionAddAttributeOptions* options)
 {
+    EosAttributeData* mutable_attribute{};
+    std::int64_t original_value{};
+    bool capacity_override{};
     if (options && options->SessionAttribute)
     {
         const auto* attribute = options->SessionAttribute;
+        const std::string key = safe_utf8(attribute->Key);
+        if (key == "NumPublicConnections" && attribute->ValueType == 1)
+        {
+            original_value = attribute->Value.AsInt64;
+            const std::int64_t effective = std::max(original_value, static_cast<std::int64_t>(limit()));
+            mutable_attribute = const_cast<EosAttributeData*>(attribute);
+            mutable_attribute->Value.AsInt64 = effective;
+            capacity_override = true;
+            log("EOS advertised NumPublicConnections " + std::to_string(original_value)
+                + " -> " + std::to_string(effective));
+        }
         log("EOS SessionModification_AddAttribute options_api=" + std::to_string(options->ApiVersion)
             + " attribute_api=" + std::to_string(attribute->ApiVersion)
-            + " key=" + safe_utf8(attribute->Key)
+            + " key=" + key
             + " type=" + std::to_string(attribute->ValueType)
             + " value=" + eos_attribute_value(attribute)
             + " advertisement=" + std::to_string(options->AdvertisementType)
@@ -326,6 +356,7 @@ EosResult __cdecl eos_session_add_attribute_hook(void* modification,
     }
     else log("EOS SessionModification_AddAttribute options/attribute=<null>");
     const EosResult result = g_eos_session_add_attribute(modification, options);
+    if (capacity_override) mutable_attribute->Value.AsInt64 = original_value;
     log("EOS SessionModification_AddAttribute result=" + std::to_string(result));
     return result;
 }
