@@ -14,6 +14,19 @@ The mod installs a Lua script, a native DLL, and a Wayfinder-specific UE4SS
 signature. It does not replace the Wayfinder executable, game packages, or save
 files.
 
+## Contents
+
+<!-- toc:start -->
+- [Configuration](#configuration)
+- [Install](#install)
+  - [Install UE4SS 3.0.1](#install-ue4ss-301)
+  - [Install MorePlayers](#install-moreplayers)
+- [Build](#build)
+- [Project layout](#project-layout)
+- [Technical notes](#technical-notes)
+- [Attribution](#attribution)
+<!-- toc:end -->
+
 ## Configuration
 
 Edit `src/MorePlayers/config.ini` before you build the distribution:
@@ -99,6 +112,7 @@ Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
 ## Build
 
 Run `build.ps1` to compile the native DLL and generate the Nexus Mods files.
+The build script also updates each generated table of contents.
 
 ```powershell
 .\build.ps1

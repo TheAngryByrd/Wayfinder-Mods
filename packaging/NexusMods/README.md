@@ -14,6 +14,15 @@ The mod installs a Lua script, a native DLL, and a Wayfinder-specific UE4SS
 signature. It does not replace the Wayfinder executable, game packages, or save
 files.
 
+## Contents
+
+<!-- toc:start -->
+- [Requirements](#requirements)
+- [Install](#install)
+- [Configuration](#configuration)
+- [Logs](#logs)
+<!-- toc:end -->
+
 ## Requirements
 
 Install [UE4SS 3.0.1](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1)

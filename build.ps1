@@ -20,6 +20,8 @@ $archivePath = Join-Path $repositoryDirectory 'dist\Wayfinder-MorePlayers-NexusM
 $modDirectory = Join-Path $distributionDirectory 'Atlas\Binaries\Win64\Mods\MorePlayers'
 $signatureDirectory = Join-Path $distributionDirectory 'Atlas\Binaries\Win64\UE4SS_Signatures'
 
+& (Join-Path $repositoryDirectory 'scripts\update-toc.ps1')
+
 if (-not $SkipNativeBuild) {
     & (Join-Path $nativeDirectory 'build.ps1') -Configuration $Configuration -NoCopy
     if ($LASTEXITCODE -ne 0) {
