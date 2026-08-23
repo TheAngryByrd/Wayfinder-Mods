@@ -13,9 +13,10 @@ are called. The captured lobby ID is used to publish Steam `connect` rich
 presence while leaving the invite dialog under user control.
 
 The hook raises the requested Steam lobby capacity to the value in
-`../config.ini` and publishes a `+connect_lobby` Steam Rich Presence value.
+`../MorePlayers/config.ini` and publishes a `+connect_lobby` Steam Rich Presence value.
 It does not open the Steam overlay automatically. Both
-`../Scripts/main.lua` and `../dlls/main.dll` read the same `MaxPlayers` setting.
+`../MorePlayers/Scripts/main.lua` and the compiled DLL read the same `MaxPlayers`
+setting.
 
 ## Requirements
 
@@ -33,9 +34,9 @@ and run:
 .\build.ps1
 ```
 
-The script configures and compiles an x64 Release build, then copies the result
-to `..\MorePlayers\dlls\main.dll`. Use `-NoCopy` to compile without replacing
-the packaged DLL, or `-Configuration Debug` for a debug build.
+The script configures and compiles an x64 Release build. It then copies the
+result into `dist\NexusMods`. Use `-NoCopy` to compile without copying the DLL.
+Use `-Configuration Debug` for a debug build.
 
 The equivalent manual commands are:
 
@@ -50,10 +51,10 @@ The output is:
 build\Release\MorePlayersSteamLimit.dll
 ```
 
-Rename/copy it to:
+The root `build.ps1` script copies it to:
 
 ```text
-..\dlls\main.dll
+dist\NexusMods\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll
 ```
 
 ## Validation

@@ -6,7 +6,7 @@ native invite flow can target the active lobby.
 
 ## Configuration
 
-Edit `MorePlayers/config.ini` before launching Wayfinder:
+Edit `src/MorePlayers/config.ini` before you build the distribution:
 
 ```ini
 MaxPlayers=25
@@ -31,7 +31,7 @@ Wayfinder UE4SS 3.0.1 setup first.
 4. Open `Atlas\Binaries\Win64`.
 5. Remove an old `xinput1_3.dll` file from this directory.
 6. Extract the UE4SS archive contents into `Atlas\Binaries\Win64`.
-7. Copy [`UE4SS_Signatures/GUObjectArray.lua`](UE4SS_Signatures/GUObjectArray.lua) to:
+7. Copy [`src/UE4SS_Signatures/GUObjectArray.lua`](src/UE4SS_Signatures/GUObjectArray.lua) to:
 
 ```text
 Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
@@ -56,10 +56,17 @@ for additional information.
 
 ### Install MorePlayers
 
-Copy the `MorePlayers` directory to:
+Build the Nexus Mods distribution. Then copy its `Atlas` directory into the
+Wayfinder installation directory.
+
+```powershell
+.\build.ps1
+```
+
+The generated mod directory is:
 
 ```text
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers
+dist\NexusMods\Atlas\Binaries\Win64\Mods\MorePlayers
 ```
 
 Confirm that these files exist:
@@ -81,8 +88,35 @@ Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
 
 ## Build
 
-See [`native/README.md`](native/README.md). The resulting DLL should be copied to
-`MorePlayers/dlls/main.dll`.
+Run `build.ps1` to compile the native DLL and generate the Nexus Mods files.
+
+```powershell
+.\build.ps1
+```
+
+The script creates these outputs:
+
+```text
+dist\NexusMods\
+dist\Wayfinder-MorePlayers-NexusMods.zip
+```
+
+Use `-SkipNativeBuild` to reuse the current compiled DLL. Use `-NoArchive` to
+generate only the unpacked distribution.
+
+See [`src/native/README.md`](src/native/README.md) for native build details.
+
+## Project layout
+
+```text
+src\MorePlayers                 Lua script and mod configuration
+src\native                      C++ source and native build files
+src\UE4SS_Signatures            Wayfinder UE4SS signature
+dist\NexusMods                  Generated Nexus Mods directory
+dist\Wayfinder-MorePlayers-NexusMods.zip
+```
+
+The repository ignores `dist` because all distribution files are generated.
 
 ## Technical notes
 

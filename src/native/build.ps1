@@ -41,7 +41,8 @@ $cmake = Find-CMake
 $sourceDirectory = $PSScriptRoot
 $buildDirectory = Join-Path $sourceDirectory 'build'
 $outputDll = Join-Path $buildDirectory "$Configuration\MorePlayersSteamLimit.dll"
-$modDll = Join-Path (Split-Path $sourceDirectory -Parent) 'MorePlayers\dlls\main.dll'
+$repositoryDirectory = Split-Path (Split-Path $sourceDirectory -Parent) -Parent
+$modDll = Join-Path $repositoryDirectory 'dist\NexusMods\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll'
 
 Write-Host "CMake: $cmake"
 Write-Host "Configuration: $Configuration"
@@ -61,11 +62,11 @@ if (-not (Test-Path -LiteralPath $outputDll)) {
 }
 
 if (-not $NoCopy) {
+    New-Item -ItemType Directory -Path (Split-Path $modDll -Parent) -Force | Out-Null
     Copy-Item -LiteralPath $outputDll -Destination $modDll -Force
-    Write-Host "Installed compiled DLL: $modDll"
+    Write-Host "Copied compiled DLL: $modDll"
 }
 
 $hash = Get-FileHash -LiteralPath $outputDll -Algorithm SHA256
 Write-Host "Build complete: $outputDll"
 Write-Host "SHA-256: $($hash.Hash)"
-

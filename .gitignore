@@ -1,4 +1,5 @@
-native/build/
+src/native/build/
+dist/
 .vs/
 *.user
 *.suo
