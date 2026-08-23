@@ -31,6 +31,14 @@ Wayfinder UE4SS 3.0.1 setup first.
 4. Open `Atlas\Binaries\Win64`.
 5. Remove an old `xinput1_3.dll` file from this directory.
 6. Extract the UE4SS archive contents into `Atlas\Binaries\Win64`.
+7. Copy [`UE4SS_Signatures/GUObjectArray.lua`](UE4SS_Signatures/GUObjectArray.lua) to:
+
+```text
+Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
+```
+
+Wayfinder requires this custom signature. UE4SS uses it to locate the global
+object array. Lua mods cannot load when this lookup fails.
 
 The directory must contain these items:
 
@@ -38,6 +46,7 @@ The directory must contain these items:
 Wayfinder\Atlas\Binaries\Win64\dwmapi.dll
 Wayfinder\Atlas\Binaries\Win64\UE4SS.dll
 Wayfinder\Atlas\Binaries\Win64\UE4SS-settings.ini
+Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
 Wayfinder\Atlas\Binaries\Win64\Mods
 ```
 
