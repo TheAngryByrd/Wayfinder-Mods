@@ -8,6 +8,7 @@ Select a mod to see its installation, configuration, build, and troubleshooting 
 <!-- toc:start -->
 - [Mods](#mods)
   - [MorePlayers](#moreplayers)
+  - [MoreDrops](#moredrops)
 - [Add another mod](#add-another-mod)
 - [Build](#build)
   - [Build options](#build-options)
@@ -26,6 +27,14 @@ Wayfinder automatically scales the game for the number of connected players.
 The mod keeps Steam invitations and public joining available beyond the normal three-player limit.
 
 See the [MorePlayers documentation](src/mods/MorePlayers/README.md).
+
+### MoreDrops
+
+MoreDrops increases loot probability and item amounts. Each value uses an
+independent multiplier, so users can change probability and amount ranges
+separately.
+
+See the [MoreDrops documentation](src/mods/MoreDrops/README.md).
 
 ## Add another mod
 
