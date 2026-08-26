@@ -1,14 +1,33 @@
 [CmdletBinding()]
 param(
-    [string[]] $Path = @(
-        (Join-Path (Split-Path $PSScriptRoot -Parent) 'README.md'),
-        (Join-Path (Split-Path $PSScriptRoot -Parent) 'packaging\NexusMods\README.md'),
-        (Join-Path (Split-Path $PSScriptRoot -Parent) 'src\native\README.md')
-    )
+    [string[]] $Path = @()
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+$repositoryDirectory = Split-Path $PSScriptRoot -Parent
+if ($Path.Count -eq 0) {
+    $markdownFiles = [System.Collections.Generic.List[string]]::new()
+    $markdownFiles.Add((Join-Path $repositoryDirectory 'README.md'))
+
+    $modsDirectory = Join-Path $repositoryDirectory 'src\mods'
+    if (Test-Path -LiteralPath $modsDirectory) {
+        foreach ($modDirectory in (Get-ChildItem -LiteralPath $modsDirectory -Directory)) {
+            $modReadmes = @(
+                (Join-Path $modDirectory.FullName 'README.md'),
+                (Join-Path $modDirectory.FullName 'native\README.md')
+            )
+            foreach ($readme in $modReadmes) {
+                if (Test-Path -LiteralPath $readme) {
+                    $markdownFiles.Add($readme)
+                }
+            }
+        }
+    }
+
+    $Path = @($markdownFiles | Sort-Object -Unique)
+}
 
 function Get-MarkdownAnchor {
     param([Parameter(Mandatory)][string] $Heading)

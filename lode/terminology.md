@@ -7,8 +7,10 @@
 - **Steam lobby** - The Steam object used for membership and friend invitations.
 - **Session capacity** - The maximum number of players accepted by the session.
 - **Public spaces** - The joinable player count advertised to session searches.
+- **RVA** - A relative virtual address measured from a loaded module's image base.
 - **Lode** - The persistent AI-owned project knowledge in `lode/`.
 - **Distribution** - Generated files prepared for a mod hosting website.
+- **Mod manifest** - A `mod.json` file that defines one buildable mod package.
 
 ```mermaid
 flowchart LR

@@ -1,8 +1,8 @@
 # Party UI
 
 Wayfinder hides the `+Party Member` and `Code` controls when its local party UI
-reaches the original three-player limit. The online session code remains
-available, so this behavior is a local widget rule.
+reaches the original three-player limit. Reflection shows dynamic party storage
+and separate party-size settings, so the behavior is not a fixed member array.
 
 ```mermaid
 flowchart TD
@@ -14,7 +14,7 @@ flowchart TD
 
 ## Current diagnostics
 
-- Lua records party-related widgets after `GameStateBase:AddPlayerState`.
+- Lua records party-related widgets after `PartyComponent:CLIENT_RefreshParty`.
 - F9 records a manual widget snapshot.
 - `PartyUiDiagnostics=0` disables these snapshots.
 - The diagnostic records widget names, visibility, and enabled state.
@@ -26,9 +26,12 @@ flowchart TD
 [MorePlayers] Party UI widget name=... visibility=... enabled=...
 ```
 
-## Pending decision
+## Current limit behavior
 
-Identify the exact cooked widget before changing visibility. A host-only UI fix
-changes only the host display. Client displays require a client-side UI mod.
+Lua sets `AGameSession.MaxPartySize` and
+`USocialSettings.DefaultMaxPartySize`. Test these settings before forcing
+widget visibility. A host-only UI fix changes only the host display. Client
+displays require a client-side UI mod.
 
-Related: [Runtime summary](summary.md), [Session capacity](session-capacity.md), and [Roadmap](../plans/roadmap.md).
+Related: [Runtime summary](summary.md), [Session capacity](session-capacity.md),
+[Runtime reflection](reflection.md), and [Roadmap](../plans/roadmap.md).

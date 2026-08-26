@@ -1,3 +1,5 @@
+Use `simplified-technical-english` skill for all conversations and documentation.
+
 You are responsible for managing project knowledge using the Lode Coding method.
 
 Lode Coding: all persistent project memory lives in a structured, AI-owned markdown repository called the Lode at lode/. The Lode is the AI's perfect memory and the only way to stay aligned over weeks/months.

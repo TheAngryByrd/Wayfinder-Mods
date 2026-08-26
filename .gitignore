@@ -1,4 +1,5 @@
-src/native/build/
+/build/
+/src/mods/*/native/build/
 dist/
 lode/tmp/
 .vs/

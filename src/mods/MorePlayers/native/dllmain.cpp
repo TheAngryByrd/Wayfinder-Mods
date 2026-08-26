@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstring>
 #include <cstdio>
 #include <fstream>
 #include <filesystem>
@@ -27,6 +28,7 @@ using SetRichPresenceFn = bool(__cdecl*)(void*, const char*, const char*);
 using GetNumLobbyMembersFn = int(__cdecl*)(void*, SteamId);
 using GetLobbyMemberLimitFn = int(__cdecl*)(void*, SteamId);
 using GetLobbyOwnerFn = SteamId(__cdecl*)(void*, SteamId);
+using UpdateHostSessionFullPartyFn = void(__cdecl*)(void*, bool);
 
 // EOS SDK 1.16.3 C ABI prefixes used only for diagnostics. These mirror the
 // public EOS headers; trailing fields are intentionally not accessed.
@@ -108,6 +110,7 @@ SetRichPresenceFn g_set_rich_presence{};
 GetNumLobbyMembersFn g_get_num_lobby_members{};
 GetLobbyMemberLimitFn g_get_lobby_member_limit{};
 GetLobbyOwnerFn g_get_lobby_owner{};
+UpdateHostSessionFullPartyFn g_update_host_session_full_party{};
 EosLobbyCreateFn g_eos_lobby_create{};
 EosSetMaxMembersFn g_eos_set_max_members{};
 EosSearchSetParameterFn g_eos_lobby_search_parameter{};
@@ -119,11 +122,15 @@ EosSessionAddAttributeFn g_eos_session_add_attribute{};
 std::atomic<int> g_limit{25};
 bool g_mh{};
 std::atomic<bool> g_eos_installed{false};
+std::atomic<bool> g_eos_installing{false};
 std::atomic<bool> g_eos_wait_logged{false};
+std::atomic<bool> g_unreal_ready{false};
+std::atomic<std::uint64_t> g_eos_next_attempt{};
 std::mutex g_log_mutex;
 
 int limit() { return std::clamp(g_limit.load(), 3, 25); }
 void log(const std::string& message);
+bool hook_address(void* target, const char* label, void* replacement, void** original);
 
 std::filesystem::path config_path()
 {
@@ -420,6 +427,43 @@ bool __cdecl invite_user_hook(void* self, SteamId lobby, SteamId user)
     return result;
 }
 
+void __cdecl update_host_session_full_party_hook(void* self, bool requested)
+{
+    log("Suppressed UWFGameInstance::UpdateHostSessionFullParty requested="
+        + std::to_string(requested) + " instance=" + pointer_details(self));
+}
+
+bool install_wayfinder_full_party_hook()
+{
+    constexpr std::uintptr_t target_rva = 0x164D770;
+    // Wayfinder updates can reuse this RVA. The previous bytes began at target +0xA and always failed this entry comparison.
+    constexpr unsigned char expected_prologue[] = {
+        0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x74,
+        0x24, 0x18, 0x48, 0x89, 0x7C, 0x24, 0x20, 0x55,
+        0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57,
+    };
+    HMODULE wayfinder = GetModuleHandleW(nullptr);
+    if (!wayfinder)
+    {
+        log("Wayfinder full-party hook unavailable: main module not found");
+        return false;
+    }
+
+    auto* target = reinterpret_cast<unsigned char*>(wayfinder) + target_rva;
+    if (std::memcmp(target, expected_prologue, sizeof(expected_prologue)) != 0)
+    {
+        log("Wayfinder full-party hook unavailable: build signature mismatch target="
+            + pointer_details(target));
+        return false;
+    }
+
+    return hook_address(
+        target,
+        "UWFGameInstance::UpdateHostSessionFullParty[Wayfinder+0x164D770]",
+        reinterpret_cast<void*>(&update_host_session_full_party_hook),
+        reinterpret_cast<void**>(&g_update_host_session_full_party));
+}
+
 bool hook(HMODULE dll, const char* export_name, void* replacement, void** original)
 {
     void* target = reinterpret_cast<void*>(GetProcAddress(dll, export_name));
@@ -444,28 +488,108 @@ bool hook_address(void* target, const char* label, void* replacement, void** ori
     return true;
 }
 
-void install_eos_diagnostics()
+bool is_executable_address(void* address)
 {
-    if (g_eos_installed.load()) return;
+    MEMORY_BASIC_INFORMATION memory{};
+    if (!address || VirtualQuery(address, &memory, sizeof(memory)) != sizeof(memory)) return false;
+    if (memory.State != MEM_COMMIT || (memory.Protect & (PAGE_GUARD | PAGE_NOACCESS))) return false;
+    const DWORD protection = memory.Protect & 0xff;
+    return protection == PAGE_EXECUTE
+        || protection == PAGE_EXECUTE_READ
+        || protection == PAGE_EXECUTE_READWRITE
+        || protection == PAGE_EXECUTE_WRITECOPY;
+}
+
+struct EosHook
+{
+    const char* export_name;
+    void* replacement;
+    void** original;
+    void* target{};
+};
+
+bool install_eos_diagnostics()
+{
+    if (g_eos_installed.load()) return true;
+    if (g_eos_installing.exchange(true)) return false;
     HMODULE eos = GetModuleHandleW(L"EOSSDK-Win64-Shipping.dll");
     if (!eos)
     {
         if (!g_eos_wait_logged.exchange(true))
             log("EOS diagnostics waiting for EOSSDK-Win64-Shipping.dll");
-        return;
+        g_eos_installing = false;
+        return false;
     }
 
-    log("Installing EOS SDK 1.16.3 diagnostics module=" + pointer_details(eos));
-    hook(eos, "EOS_Lobby_CreateLobby", reinterpret_cast<void*>(&eos_lobby_create_hook), reinterpret_cast<void**>(&g_eos_lobby_create));
-    hook(eos, "EOS_LobbyModification_SetMaxMembers", reinterpret_cast<void*>(&eos_set_max_members_hook), reinterpret_cast<void**>(&g_eos_set_max_members));
-    hook(eos, "EOS_LobbySearch_SetParameter", reinterpret_cast<void*>(&eos_lobby_search_parameter_hook), reinterpret_cast<void**>(&g_eos_lobby_search_parameter));
-    hook(eos, "EOS_SessionSearch_SetParameter", reinterpret_cast<void*>(&eos_session_search_parameter_hook), reinterpret_cast<void**>(&g_eos_session_search_parameter));
-    hook(eos, "EOS_Sessions_CreateSessionModification", reinterpret_cast<void*>(&eos_create_session_modification_hook), reinterpret_cast<void**>(&g_eos_create_session_modification));
-    hook(eos, "EOS_Sessions_UpdateSessionModification", reinterpret_cast<void*>(&eos_update_session_modification_hook), reinterpret_cast<void**>(&g_eos_update_session_modification));
-    hook(eos, "EOS_SessionModification_SetMaxPlayers", reinterpret_cast<void*>(&eos_session_set_max_players_hook), reinterpret_cast<void**>(&g_eos_session_set_max_players));
-    hook(eos, "EOS_SessionModification_AddAttribute", reinterpret_cast<void*>(&eos_session_add_attribute_hook), reinterpret_cast<void**>(&g_eos_session_add_attribute));
+    EosHook hooks[] = {
+        {"EOS_Lobby_CreateLobby", reinterpret_cast<void*>(&eos_lobby_create_hook), reinterpret_cast<void**>(&g_eos_lobby_create)},
+        {"EOS_LobbyModification_SetMaxMembers", reinterpret_cast<void*>(&eos_set_max_members_hook), reinterpret_cast<void**>(&g_eos_set_max_members)},
+        {"EOS_LobbySearch_SetParameter", reinterpret_cast<void*>(&eos_lobby_search_parameter_hook), reinterpret_cast<void**>(&g_eos_lobby_search_parameter)},
+        {"EOS_SessionSearch_SetParameter", reinterpret_cast<void*>(&eos_session_search_parameter_hook), reinterpret_cast<void**>(&g_eos_session_search_parameter)},
+        {"EOS_Sessions_CreateSessionModification", reinterpret_cast<void*>(&eos_create_session_modification_hook), reinterpret_cast<void**>(&g_eos_create_session_modification)},
+        {"EOS_Sessions_UpdateSessionModification", reinterpret_cast<void*>(&eos_update_session_modification_hook), reinterpret_cast<void**>(&g_eos_update_session_modification)},
+        {"EOS_SessionModification_SetMaxPlayers", reinterpret_cast<void*>(&eos_session_set_max_players_hook), reinterpret_cast<void**>(&g_eos_session_set_max_players)},
+        {"EOS_SessionModification_AddAttribute", reinterpret_cast<void*>(&eos_session_add_attribute_hook), reinterpret_cast<void**>(&g_eos_session_add_attribute)},
+    };
+
+    for (auto& hook_spec : hooks)
+    {
+        hook_spec.target = reinterpret_cast<void*>(GetProcAddress(eos, hook_spec.export_name));
+        if (!is_executable_address(hook_spec.target))
+        {
+            log(std::string("EOS readiness check failed for ") + hook_spec.export_name);
+            g_eos_installing = false;
+            return false;
+        }
+    }
+
+    log("Installing EOS SDK 1.16.3 hooks after Unreal initialization module=" + pointer_details(eos));
+    std::size_t created = 0;
+    for (; created < std::size(hooks); ++created)
+    {
+        const MH_STATUS status = MH_CreateHook(
+            hooks[created].target, hooks[created].replacement, hooks[created].original);
+        if (status != MH_OK)
+        {
+            log(std::string("Unable to create EOS hook ") + hooks[created].export_name
+                + " status=" + std::to_string(status));
+            break;
+        }
+    }
+
+    bool queued = created == std::size(hooks);
+    for (std::size_t index = 0; queued && index < created; ++index)
+    {
+        const MH_STATUS status = MH_QueueEnableHook(hooks[index].target);
+        if (status != MH_OK)
+        {
+            log(std::string("Unable to queue EOS hook ") + hooks[index].export_name
+                + " status=" + std::to_string(status));
+            queued = false;
+        }
+    }
+
+    const MH_STATUS apply_status = queued ? MH_ApplyQueued() : MH_UNKNOWN;
+    if (!queued || apply_status != MH_OK)
+    {
+        if (queued)
+            log("Unable to enable EOS hook batch status=" + std::to_string(apply_status));
+        for (std::size_t index = 0; index < created; ++index)
+        {
+            MH_DisableHook(hooks[index].target);
+            MH_RemoveHook(hooks[index].target);
+            *hooks[index].original = nullptr;
+        }
+        g_eos_installing = false;
+        return false;
+    }
+
+    for (const auto& hook_spec : hooks)
+        log(std::string("Hooked ") + hook_spec.export_name);
     g_eos_installed = true;
+    g_eos_installing = false;
     log("EOS hooks installed; configured capacity overrides enabled");
+    return true;
 }
 
 void install()
@@ -490,6 +614,7 @@ void install()
     log("Steamworks ABI: SDK=v157 interface=SteamMatchMaking009 pointer=" + pointer_details(matchmaking));
     void** vtable = *reinterpret_cast<void***>(matchmaking);
     hook_address(vtable[31], "ISteamMatchmaking009::SetLobbyMemberLimit[v31]", reinterpret_cast<void*>(&limit_hook), reinterpret_cast<void**>(&g_set_limit));
+    install_wayfinder_full_party_hook();
 
     g_steam_friends = reinterpret_cast<SteamFriendsFn>(GetProcAddress(steam, "SteamAPI_SteamFriends_v017"));
     g_set_rich_presence = reinterpret_cast<SetRichPresenceFn>(GetProcAddress(steam, "SteamAPI_ISteamFriends_SetRichPresence"));
@@ -498,8 +623,7 @@ void install()
         + " rich_presence=" + (g_set_rich_presence ? "1" : "0")
         + " member_count=" + (g_get_num_lobby_members ? "1" : "0"));
     log("Post-hook diagnostics avoid unproven vtable getters");
-
-    install_eos_diagnostics();
+    log("EOS hook installation waiting for Unreal initialization");
 }
 
 // ABI-compatible subset of UE4SS 3.0.1's CppUserModBase. The UE4SS loader
@@ -520,8 +644,21 @@ public:
     {
         if (g_mh) { MH_DisableHook(MH_ALL_HOOKS); MH_Uninitialize(); }
     }
-    virtual void on_update() { if (g_mh && !g_eos_installed.load()) install_eos_diagnostics(); }
-    virtual void on_unreal_init() {}
+    virtual void on_update()
+    {
+        const std::uint64_t now = GetTickCount64();
+        if (g_mh && g_unreal_ready.load() && !g_eos_installed.load()
+            && now >= g_eos_next_attempt.load())
+        {
+            if (!install_eos_diagnostics()) g_eos_next_attempt = now + 2000;
+        }
+    }
+    virtual void on_unreal_init()
+    {
+        g_unreal_ready = true;
+        g_eos_next_attempt = 0;
+        log("Unreal initialization complete; EOS readiness checks enabled");
+    }
     virtual void on_ui_init() {}
     virtual void on_program_start() { install(); }
     virtual void on_lua_start(const void*, Opaque&, Opaque&, Opaque&, std::vector<Opaque*>&) {}

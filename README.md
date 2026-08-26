@@ -1,236 +1,120 @@
-# Wayfinder MorePlayers
+# Wayfinder Mods
 
-This mod lets a Wayfinder host play with more than three people. Set the maximum
-player count from 3 through 25. Only the host needs the mod. Wayfinder
-automatically scales the game for the number of connected players.
-
-While Wayfinder runs, the mod changes:
-
-- Wayfinder's maximum player setting.
-- The number of public spaces reported by the online session.
-- The maximum number of members in the Steam lobby.
-- The Steam join information used by friend invitations.
-
-The mod installs a Lua script, a native DLL, and a Wayfinder-specific UE4SS
-signature. It does not replace the Wayfinder executable, game packages, or save
-files.
+This repository contains mods for Wayfinder.
+Select a mod to see its installation, configuration, build, and troubleshooting instructions.
 
 ## Contents
 
 <!-- toc:start -->
-- [Configuration](#configuration)
-- [Install](#install)
-  - [Install UE4SS 3.0.1](#install-ue4ss-301)
-  - [Install MorePlayers](#install-moreplayers)
-- [Confirm the mod is working](#confirm-the-mod-is-working)
-  - [Troubleshooting](#troubleshooting)
+- [Mods](#mods)
+  - [MorePlayers](#moreplayers)
+- [Add another mod](#add-another-mod)
 - [Build](#build)
+  - [Build options](#build-options)
 - [Project layout](#project-layout)
-- [Technical notes](#technical-notes)
-- [Attribution](#attribution)
 <!-- toc:end -->
 
-## Configuration
+## Mods
 
-Close Wayfinder. Then edit the installed configuration file:
+### MorePlayers
 
-```text
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\config.ini
-```
+MorePlayers lets a Wayfinder host play with more than three people.
+The host can set the maximum player count from 3 through 25.
+Joining players do not need the mod.
+Wayfinder automatically scales the game for the number of connected players.
 
-Set the required values:
+The mod keeps Steam invitations and public joining available beyond the normal three-player limit.
 
-```ini
-MaxPlayers=25
-PartyUiDiagnostics=1
-```
+See the [MorePlayers documentation](src/mods/MorePlayers/README.md).
 
-Supported values are 3 through 25. The Lua script and native DLL read this same
-setting when Wayfinder starts. Restart Wayfinder after you change the file.
+## Add another mod
 
-Party UI diagnostics run after each player joins. Press F9 to record an
-additional snapshot in `UE4SS.log`. Set `PartyUiDiagnostics=0` to disable these
-snapshots.
+1. Create `src\mods\<ModName>`.
+2. Copy the [MorePlayers manifest](src/mods/MorePlayers/mod.json) to the new directory.
+3. Set the new mod identity and archive name in `mod.json`.
+4. Create `src\mods\<ModName>\README.md` with the complete mod documentation.
+5. Put installable mod files in `src\mods\<ModName>\content`.
+6. Put an optional CMake project in `src\mods\<ModName>\native`.
+7. Add the native CMake target to `mod.json` when the mod uses a DLL.
 
-## Install
-
-This repository contains only the mod, not UE4SS itself. Install the compatible
-Wayfinder UE4SS 3.0.1 setup first.
-
-### Install UE4SS 3.0.1
-
-1. Download [`UE4SS_v3.0.1.zip`](https://github.com/UE4SS-RE/RE-UE4SS/releases/download/v3.0.1/UE4SS_v3.0.1.zip).
-2. Close Wayfinder.
-3. Open the Wayfinder installation directory in Steam.
-4. Open `Atlas\Binaries\Win64`.
-5. Remove an old `xinput1_3.dll` file from this directory.
-6. Extract the UE4SS archive contents into `Atlas\Binaries\Win64`.
-7. Copy [`src/UE4SS_Signatures/GUObjectArray.lua`](src/UE4SS_Signatures/GUObjectArray.lua) to:
-
-```text
-Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
-```
-
-Wayfinder requires this custom signature. UE4SS uses it to locate the global
-object array. Lua mods cannot load when this lookup fails.
-
-The directory must contain these items:
-
-```text
-Wayfinder\Atlas\Binaries\Win64\dwmapi.dll
-Wayfinder\Atlas\Binaries\Win64\UE4SS.dll
-Wayfinder\Atlas\Binaries\Win64\UE4SS-settings.ini
-Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
-Wayfinder\Atlas\Binaries\Win64\Mods
-```
-
-See the [official UE4SS installation guide](https://docs.ue4ss.com/installation-guide)
-and [UE4SS 3.0.1 release notes](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1)
-for additional information.
-
-### Install MorePlayers
-
-Build the Nexus Mods distribution. Then copy its `Atlas` directory into the
-Wayfinder installation directory.
-
-```powershell
-.\build.ps1
-```
-
-The generated mod directory is:
-
-```text
-dist\NexusMods\Atlas\Binaries\Win64\Mods\MorePlayers
-```
-
-Confirm that these files exist:
-
-```text
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\enabled.txt
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\config.ini
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\Scripts\main.lua
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll
-```
-
-Start Wayfinder. Confirm that `UE4SS.log` contains `[MorePlayers] Mod loaded`.
-
-The native diagnostic log is written to:
-
-```text
-Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
-```
-
-## Confirm the mod is working
-
-Start Wayfinder. Open this file:
-
-```text
-Wayfinder\Atlas\Binaries\Win64\UE4SS.log
-```
-
-Confirm that the file contains messages similar to these:
-
-```text
-[MorePlayers] Config MaxPlayers=25
-[MorePlayers] Mod loaded
-[MorePlayers] Engine MaxPlayers: 25
-```
-
-Open this file:
-
-```text
-Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
-```
-
-Confirm that the file contains these startup messages:
-
-```text
-[MorePlayersSteamLimit] Native companion starting
-[MorePlayersSteamLimit] Config MaxPlayers=25
-[MorePlayersSteamLimit] EOS hooks installed; configured capacity overrides enabled
-```
-
-Host a public or invite-only game. Confirm that the native log contains these
-session messages:
-
-```text
-[MorePlayersSteamLimit] EOS advertised NumPublicConnections 3 -> 25
-[MorePlayersSteamLimit] SetLobbyMemberLimit 3 -> 25 lobby=...
-[MorePlayersSteamLimit] SetLobbyMemberLimit result=1
-```
-
-Repeated `3 -> 25` messages are normal. Wayfinder submits its original limit
-each time it updates the session. The mod replaces each submitted value.
-
-### Troubleshooting
-
-- If `UE4SS.log` does not exist, check the UE4SS installation and custom signature.
-- If `Mod loaded` is absent, check the `MorePlayers` directory and `enabled.txt`.
-- If the native log does not exist, check `MorePlayers\dlls\main.dll`.
-- If Steam messages are absent, host a game before you check the log.
-- If `SetLobbyMemberLimit result=0` appears, Steam rejected the limit update.
-- Press F9 to record a party UI snapshot when UI diagnostics are enabled.
-
-For a Wayfinder crash, collect these files:
-
-```text
-%LOCALAPPDATA%\Wayfinder\Saved\Logs\Atlas.log
-%LOCALAPPDATA%\Wayfinder\Saved\Crashes
-```
+Use the [manifest schema](schemas/mod.schema.json) to validate `mod.json`.
 
 ## Build
 
-Run `build.ps1` to compile the native DLL and generate the Nexus Mods files.
-The build script also updates each generated table of contents.
+`build.ps1` discovers each `src\mods\<ModName>\mod.json` manifest.
+Without `-Mod`, the script builds every discovered mod.
 
-To change the default configuration in a new distribution, edit:
+For each selected mod, the script:
 
-```text
-src\MorePlayers\config.ini
-```
+1. Validates manifest values and unique package names.
+2. Updates the root, mod, and native README tables of contents.
+3. Compiles the optional native CMake target.
+4. Recreates the mod's unpacked package directory.
+5. Copies the mod content, native DLL, shared signature, and mod README.
+6. Creates the ZIP archive unless `-NoArchive` is set.
+
+Native output uses `build\native\<ModName>\<Configuration>`.
+Unpacked packages use `dist\NexusMods\<ModName>`.
+Archive names come from each mod manifest.
+
+Build all discovered mods:
 
 ```powershell
 .\build.ps1
 ```
 
-The script creates these outputs:
+Build one mod:
 
-```text
-dist\NexusMods\
-dist\Wayfinder-MorePlayers-NexusMods.zip
+```powershell
+.\build.ps1 -Mod <ModName>
 ```
 
-Use `-SkipNativeBuild` to reuse the current compiled DLL. Use `-NoArchive` to
-generate only the unpacked distribution.
+Build multiple selected mods:
 
-See [`src/native/README.md`](src/native/README.md) for native build details.
+```powershell
+.\build.ps1 -Mod MorePlayers,AnotherMod
+```
+
+List discovered mods without building them:
+
+```powershell
+.\build.ps1 -ListMods
+```
+
+### Build options
+
+| Option | Effect |
+| --- | --- |
+| `-Mod <Name>` | Builds only the selected mod. Supply a comma-separated list for multiple mods. |
+| `-Configuration <Name>` | Selects `Debug`, `Release`, `RelWithDebInfo`, or `MinSizeRel`. The default is `Release`. |
+| `-SkipNativeBuild` | Reuses an existing native DLL from the selected configuration. |
+| `-NoArchive` | Creates the unpacked package without creating its ZIP archive. |
+| `-ListMods` | Lists discovered manifests without building packages. |
+
+Native builds require Visual Studio 2022 with Desktop development with C++.
+They also require CMake 3.22 or newer.
 
 ## Project layout
 
 ```text
-src\MorePlayers                 Lua script and mod configuration
-src\native                      C++ source and native build files
-src\UE4SS_Signatures            Wayfinder UE4SS signature
-dist\NexusMods                  Generated Nexus Mods directory
-dist\Wayfinder-MorePlayers-NexusMods.zip
+AGENTS.md                              Project instructions for coding agents
+README.md                              Mod catalog and shared contributor guide
+build.ps1                              Manifest-based package builder
+schemas\mod.schema.json                Mod manifest schema
+scripts\build-native.ps1               Shared CMake build tool
+scripts\update-toc.ps1                 Markdown TOC generator
+src\mods\<ModName>\mod.json            Package definition
+src\mods\<ModName>\README.md           Complete mod documentation
+src\mods\<ModName>\content             Files installed in the UE4SS mod directory
+src\mods\<ModName>\native              Optional C++ source
+src\shared\UE4SS_Signatures             Shared Wayfinder UE4SS signature
+tools\recon\WayfinderDump               Reusable reflection diagnostic
+lode                                   Persistent project knowledge
+lode\tmp                               Ignored session handoffs and temporary notes
+build\native\<ModName>                  Generated native build files
+dist\NexusMods\<ModName>                Generated package directory
+dist\<ArchiveName>.zip                  Generated package archive
 ```
 
-The repository ignores `dist` because all distribution files are generated.
-
-## Technical notes
-
-Wayfinder ships Steamworks SDK v157 and uses `SteamMatchMaking009` through the
-C++ interface. The native companion hooks the runtime-verified
-`ISteamMatchmaking009::SetLobbyMemberLimit` slot and avoids unverified vtable
-methods.
-
-The native companion raises the host's EOS 1.16.3 session capacity and
-advertised `NumPublicConnections` value. EOS lobby/session search hooks remain
-read-only diagnostics; client search filters and lobby-browser UI are not
-modified, allowing joining clients to remain unmodded.
-
-## Attribution
-
-The Lua session-limit approach is based on the More Players mod by FuniWF. This
-repository contains a local compatibility implementation and native Steam lobby
-companion.
+Commit source files, build tools, and permanent Lode files.
+Do not commit `lode\tmp` or generated files under `build` and `dist`.

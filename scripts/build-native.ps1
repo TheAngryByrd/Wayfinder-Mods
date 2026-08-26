@@ -1,9 +1,16 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel')]
-    [string] $Configuration = 'Release',
+    [Parameter(Mandatory)]
+    [string] $SourceDirectory,
 
-    [switch] $NoCopy
+    [Parameter(Mandatory)]
+    [string] $BuildDirectory,
+
+    [Parameter(Mandatory)]
+    [string] $Target,
+
+    [ValidateSet('Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel')]
+    [string] $Configuration = 'Release'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,36 +44,34 @@ function Find-CMake {
     throw 'CMake was not found. Install Visual Studio 2022 with Desktop development with C++, or add CMake to PATH.'
 }
 
-$cmake = Find-CMake
-$sourceDirectory = $PSScriptRoot
-$buildDirectory = Join-Path $sourceDirectory 'build'
-$outputDll = Join-Path $buildDirectory "$Configuration\MorePlayersSteamLimit.dll"
-$repositoryDirectory = Split-Path (Split-Path $sourceDirectory -Parent) -Parent
-$modDll = Join-Path $repositoryDirectory 'dist\NexusMods\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll'
+$resolvedSource = [System.IO.Path]::GetFullPath($SourceDirectory)
+$resolvedBuild = [System.IO.Path]::GetFullPath($BuildDirectory)
+if (-not (Test-Path -LiteralPath (Join-Path $resolvedSource 'CMakeLists.txt'))) {
+    throw "The native source does not contain CMakeLists.txt: $resolvedSource"
+}
 
+$cmake = Find-CMake
 Write-Host "CMake: $cmake"
+Write-Host "Native source: $resolvedSource"
+Write-Host "Native build: $resolvedBuild"
+Write-Host "Target: $Target"
 Write-Host "Configuration: $Configuration"
 
-& $cmake -S $sourceDirectory -B $buildDirectory -G 'Visual Studio 17 2022' -A x64
+& $cmake -S $resolvedSource -B $resolvedBuild -G 'Visual Studio 17 2022' -A x64
 if ($LASTEXITCODE -ne 0) {
     throw "CMake configuration failed with exit code $LASTEXITCODE."
 }
 
-& $cmake --build $buildDirectory --config $Configuration --target MorePlayersSteamLimit
+& $cmake --build $resolvedBuild --config $Configuration --target $Target
 if ($LASTEXITCODE -ne 0) {
     throw "Compilation failed with exit code $LASTEXITCODE."
 }
 
+$outputDll = Join-Path $resolvedBuild "$Configuration\$Target.dll"
 if (-not (Test-Path -LiteralPath $outputDll)) {
-    throw "Build completed but the expected DLL was not found: $outputDll"
-}
-
-if (-not $NoCopy) {
-    New-Item -ItemType Directory -Path (Split-Path $modDll -Parent) -Force | Out-Null
-    Copy-Item -LiteralPath $outputDll -Destination $modDll -Force
-    Write-Host "Copied compiled DLL: $modDll"
+    throw "The native build did not create the expected DLL: $outputDll"
 }
 
 $hash = Get-FileHash -LiteralPath $outputDll -Algorithm SHA256
-Write-Host "Build complete: $outputDll"
-Write-Host "SHA-256: $($hash.Hash)"
+Write-Host "Native build complete: $outputDll"
+Write-Host "Native DLL SHA-256: $($hash.Hash)"

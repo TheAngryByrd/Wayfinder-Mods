@@ -13,7 +13,11 @@ flowchart TD
     Runtime --> Session[runtime/session-capacity.md]
     Runtime --> UI[runtime/party-ui.md]
     Runtime --> Diagnostics[runtime/diagnostics.md]
+    Runtime --> Stability[runtime/stability.md]
+    Runtime --> Reflection[runtime/reflection.md]
     Map --> Distribution[distribution/summary.md]
+    Distribution --> BuildSystem[distribution/build-system.md]
+    Distribution --> ModIo[distribution/mod-io.md]
 ```
 
 ## Core
@@ -29,15 +33,19 @@ flowchart TD
 - [Session capacity](runtime/session-capacity.md)
 - [Party UI](runtime/party-ui.md)
 - [Runtime diagnostics](runtime/diagnostics.md)
+- [Runtime stability](runtime/stability.md)
+- [Runtime reflection](runtime/reflection.md)
 
 ## Distribution
 
 - [Distribution summary](distribution/summary.md)
+- [Multi-mod build system](distribution/build-system.md)
+- [mod.io distribution](distribution/mod-io.md)
 
 ## Path example
 
 ```text
-src/native/dllmain.cpp -> runtime/session-capacity.md
+src/mods/MorePlayers/native/dllmain.cpp -> runtime/session-capacity.md
 ```
 
 Related: [Project summary](summary.md) and [Project practices](practices.md).

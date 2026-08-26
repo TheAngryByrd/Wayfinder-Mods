@@ -1,13 +1,15 @@
 # Project practices
 
-The project keeps editable inputs in `src`, hosting templates in `packaging`,
-generated files in `dist`, and persistent project knowledge in `lode`.
+The project keeps mod sources in `src/mods` and shared inputs in `src/shared`.
+It keeps generated native files and distribution files outside `src`.
 
 ```mermaid
 flowchart LR
-    Source[src] --> Build[build.ps1]
-    Templates[packaging] --> Build
-    Build --> Dist[dist]
+    Manifest[src/mods/ModName/mod.json] --> Build[build.ps1]
+    Source[src/mods/ModName] --> Build
+    Shared[src/shared] --> Build
+    Build --> Native[build/native/ModName]
+    Build --> Dist[dist/NexusMods/ModName]
     Code[Current code] --> Lode[lode]
 ```
 
@@ -19,12 +21,20 @@ flowchart LR
 - Keep each Lode file focused and shorter than 250 lines.
 - Use Mermaid for all Lode diagrams.
 - Generate Markdown tables of contents with `scripts/update-toc.ps1`.
-- Do not commit generated `dist` or `src/native/build` files.
+- Keep each mod's installable files in its `content` directory.
+- Keep each optional CMake project in its `native` directory.
+- Define each mod with `src/mods/<ModName>/mod.json`.
+- Keep the mod catalog and cross-mod contributor guidance in the root README.
+- Keep the current repository layout in the root README.
+- Document the root build process and supported options in the root README.
+- Keep complete mod documentation in `src/mods/<ModName>/README.md`.
+- Copy each mod README into its generated package.
+- Do not commit generated `build` or `dist` files.
 
 ## Build example
 
 ```powershell
-.\build.ps1
+.\build.ps1 -Mod MorePlayers
 ```
 
 ## Documentation example
@@ -33,4 +43,5 @@ flowchart LR
 .\scripts\update-toc.ps1
 ```
 
-Related: [Lode map](lode-map.md), [Distribution](distribution/summary.md), and [Roadmap](plans/roadmap.md).
+Related: [Lode map](lode-map.md), [Build system](distribution/build-system.md),
+and [Distribution](distribution/summary.md).
