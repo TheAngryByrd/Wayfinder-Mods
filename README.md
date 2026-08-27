@@ -9,6 +9,7 @@ Select a mod to see its installation, configuration, build, and troubleshooting 
 - [Mods](#mods)
   - [MorePlayers](#moreplayers)
   - [MoreDrops](#moredrops)
+  - [SkipStartupWarnings](#skipstartupwarnings)
 - [Add another mod](#add-another-mod)
 - [Build](#build)
   - [Build options](#build-options)
@@ -35,6 +36,14 @@ independent multiplier, so users can change probability and amount ranges
 separately.
 
 See the [MoreDrops documentation](src/mods/MoreDrops/README.md).
+
+### SkipStartupWarnings
+
+SkipStartupWarnings closes the epilepsy and autosave warning pages during
+startup. It can also load a configured existing profile. It preserves the
+normal in-game autosave indicator.
+
+See the [SkipStartupWarnings documentation](src/mods/SkipStartupWarnings/README.md).
 
 ## Add another mod
 

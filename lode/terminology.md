@@ -22,6 +22,8 @@
 - **Echo rarity** - The Common, Uncommon, Rare, or Epic rarity assigned to one generated Echo. Rare is blue. Epic is purple.
 - **Echo rarity allow-list** - The configured rarities that MoreDrops permits Wayfinder to append during a central loot spawn.
 - **Config hot reload** - Applying a saved MoreDrops configuration before a later loot call without restarting Wayfinder.
+- **Startup warning page** - A UMG page that Wayfinder shows for epilepsy or autosave information before the main menu.
+- **In-game autosave indicator** - The gameplay overlay that shows when Wayfinder writes save data.
 
 ```mermaid
 flowchart LR

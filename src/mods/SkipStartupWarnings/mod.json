@@ -1,0 +1,7 @@
+{
+  "$schema": "../../../schemas/mod.schema.json",
+  "id": "SkipStartupWarnings",
+  "displayName": "Wayfinder SkipStartupWarnings",
+  "archiveName": "Wayfinder-SkipStartupWarnings-NexusMods.zip",
+  "includeWayfinderSignature": true
+}

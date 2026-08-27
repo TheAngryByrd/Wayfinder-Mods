@@ -6,15 +6,19 @@ scales loot probability and amount ranges through Wayfinder's central loot
 spawner. MoreDrops also filters configured selected items and disallowed Echo
 rarities. Echo rejection uses Wayfinder's normal temporary-item exit before an
 inventory entry is appended. The root README lists available mods and shared
-contributor instructions. Each mod owns its detailed guide.
+contributor instructions. SkipStartupWarnings closes the epilepsy and autosave
+warning pages. It can load a configured existing profile before the main menu.
+Each mod owns its detailed guide.
 
 ```mermaid
 flowchart LR
     Catalog[Root README] --> Players[MorePlayers README]
     Catalog --> Drops[MoreDrops README]
+    Catalog --> Startup[SkipStartupWarnings README]
     Manifest[mod.json] --> Build[Root build]
     Build --> PlayersConfig[MorePlayers config]
     Build --> DropsConfig[MoreDrops config]
+    Build --> StartupConfig[SkipStartupWarnings config]
     PlayersConfig --> PlayerNative[MorePlayers native DLL]
     PlayersConfig --> SessionLua[Session Lua]
     DropsConfig --> LootNative[MoreDrops native DLL]
@@ -30,6 +34,10 @@ flowchart LR
     EchoSetting --> EchoReject[Pre-append Echo rejection]
     ItemFilter --> ItemLog[Item diagnostic keys]
     LootLua --> Trace[Loot-stage diagnostics]
+    StartupConfig --> WarningHooks[Startup warning hooks]
+    WarningHooks --> WarningPages[Epilepsy and autosave pages]
+    WarningHooks --> MenuExit[Airship menu removal]
+    StartupConfig --> ProfileLoad[Configured existing profile load]
 ```
 
 ## Current contract
@@ -41,6 +49,7 @@ flowchart LR
 - The custom `GUObjectArray.lua` signature is required for Wayfinder.
 - `src/mods/MorePlayers/mod.json` defines the MorePlayers package.
 - `src/mods/MoreDrops/mod.json` defines the MoreDrops package.
+- `src/mods/SkipStartupWarnings/mod.json` defines the SkipStartupWarnings package.
 - MoreDrops defaults to `2.0` core probability and `1.0` final probability multipliers.
 - MoreDrops defaults to `1.0` minimum and maximum amount multipliers.
 - MoreDrops supports multiplier values from `1.0` through `100.0`.
@@ -53,6 +62,12 @@ flowchart LR
 - Item diagnostics provide keys for observed loot items.
 - MoreDrops reloads a changed `config.ini` during runtime before a valid loot call.
 - MoreDrops hooks the native loot generator and keeps Lua hooks for bounded stage tracing.
+- SkipStartupWarnings closes the epilepsy and autosave warning pages after construction.
+- SkipStartupWarnings uses Wayfinder's Airship menu removal path.
+- SkipStartupWarnings leaves the in-game autosave indicator active.
+- SkipStartupWarnings leaves a warning visible when its normal removal path fails.
+- SkipStartupWarnings loads only a configured profile that contains save data.
+- An unavailable profile leaves the profile selector open.
 - `README.md` contains the mod catalog and shared contributor instructions.
 - `src/mods/MorePlayers/README.md` contains the complete MorePlayers guide.
 - `build.ps1` discovers all manifests or selects one with `-Mod`.
@@ -89,6 +104,14 @@ MoreDrops confirms an accepted runtime configuration with this log prefix:
 [MoreDropsNative] Config reloaded
 ```
 
+SkipStartupWarnings configuration:
+
+```ini
+SkipEpilepsyWarning=1
+SkipAutoSaveWarning=1
+AutoLoadProfile=1
+```
+
 Related: [Session capacity](runtime/session-capacity.md), [Drop scaling](loot/drop-scaling.md),
 [Item filtering](loot/item-filtering.md), [Item catalog](loot/item-catalog.md),
-and [Distribution](distribution/summary.md).
+[Startup warning skip](startup/summary.md), and [Distribution](distribution/summary.md).

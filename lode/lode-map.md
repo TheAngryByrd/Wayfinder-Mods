@@ -15,6 +15,7 @@ flowchart TD
     Runtime --> Diagnostics[runtime/diagnostics.md]
     Runtime --> Stability[runtime/stability.md]
     Runtime --> Reflection[runtime/reflection.md]
+    Map --> Startup[startup/summary.md]
     Map --> Loot[loot/summary.md]
     Loot --> Scaling[loot/drop-scaling.md]
     Loot --> ItemFiltering[loot/item-filtering.md]
@@ -45,6 +46,10 @@ flowchart TD
 - [Distribution summary](distribution/summary.md)
 - [Multi-mod build system](distribution/build-system.md)
 - [mod.io distribution](distribution/mod-io.md)
+
+## Startup
+
+- [Startup warning skip](startup/summary.md)
 
 ## Loot
 
