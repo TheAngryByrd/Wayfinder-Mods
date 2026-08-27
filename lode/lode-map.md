@@ -15,6 +15,10 @@ flowchart TD
     Runtime --> Diagnostics[runtime/diagnostics.md]
     Runtime --> Stability[runtime/stability.md]
     Runtime --> Reflection[runtime/reflection.md]
+    Map --> Loot[loot/summary.md]
+    Loot --> Scaling[loot/drop-scaling.md]
+    Loot --> ItemFiltering[loot/item-filtering.md]
+    Loot --> ItemCatalog[loot/item-catalog.md]
     Map --> Distribution[distribution/summary.md]
     Distribution --> BuildSystem[distribution/build-system.md]
     Distribution --> ModIo[distribution/mod-io.md]
@@ -41,6 +45,13 @@ flowchart TD
 - [Distribution summary](distribution/summary.md)
 - [Multi-mod build system](distribution/build-system.md)
 - [mod.io distribution](distribution/mod-io.md)
+
+## Loot
+
+- [Loot summary](loot/summary.md)
+- [Drop scaling](loot/drop-scaling.md)
+- [Item filtering](loot/item-filtering.md)
+- [Item catalog](loot/item-catalog.md)
 
 ## Path example
 

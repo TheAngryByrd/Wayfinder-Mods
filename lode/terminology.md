@@ -11,6 +11,17 @@
 - **Lode** - The persistent AI-owned project knowledge in `lode/`.
 - **Distribution** - Generated files prepared for a mod hosting website.
 - **Mod manifest** - A `mod.json` file that defines one buildable mod package.
+- **Loot record** - The loot data supplied to Wayfinder's central loot spawner.
+- **Loot entry** - One probability and amount range inside a loot record.
+- **Core probability multiplier** - The MoreDrops value that scales every core loot probability roll.
+- **Final probability multiplier** - The MoreDrops value that scales probability for final wrapper calls.
+- **Amount multiplier** - A MoreDrops value that scales one amount limit.
+- **Item key** - A stable `DataTable:RowName` value that identifies a selected loot item.
+- **Item probability** - The post-roll percentage that keeps a selected item stack.
+- **Item catalog** - A planned item-definition list. The current UE4SS Lua generator is disabled because reflected array conversion crashes.
+- **Echo rarity** - The Common, Uncommon, Rare, or Epic rarity assigned to one generated Echo. Rare is blue. Epic is purple.
+- **Echo rarity allow-list** - The configured rarities that MoreDrops permits Wayfinder to append during a central loot spawn.
+- **Config hot reload** - Applying a saved MoreDrops configuration before a later loot call without restarting Wayfinder.
 
 ```mermaid
 flowchart LR
@@ -24,6 +35,7 @@ flowchart LR
 
 ```text
 MaxPlayers=25 means 25 total session members, not 25 additional members.
+[MoreDropsNative] Config reloaded means the saved MoreDrops values are active.
 ```
 
 Related: [Project summary](summary.md) and [Session capacity](runtime/session-capacity.md).

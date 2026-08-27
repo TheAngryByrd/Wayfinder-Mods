@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../schemas/mod.schema.json",
+  "id": "MoreDrops",
+  "displayName": "Wayfinder MoreDrops",
+  "archiveName": "Wayfinder-MoreDrops-NexusMods.zip",
+  "includeWayfinderSignature": true,
+  "native": {
+    "target": "MoreDropsNative"
+  }
+}
