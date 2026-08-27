@@ -104,6 +104,13 @@ At runtime, inspect `Atlas\Binaries\Win64\MorePlayersSteamLimit.log`. It records
 hook installation, lobby calls, rich-presence return values, and EOS capacity
 updates.
 
+UE4SS `on_program_start` only schedules native installation. The first
+`on_update` call creates the Steam lobby-limit and Wayfinder full-party hooks
+while they are disabled. It queues both hooks and enables them with one
+`MH_ApplyQueued` call. Keep this event-loop boundary and batch activation when
+you add or change startup hooks. Synchronous startup activation blocks later
+`enabled.txt` mods. Concurrent activation can crash while Wayfinder initializes.
+
 ## Updating the full-party hook
 
 The full-party hook is specific to one `Wayfinder.exe` build. A game update can

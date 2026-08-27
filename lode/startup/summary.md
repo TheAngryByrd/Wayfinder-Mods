@@ -38,7 +38,8 @@ sequenceDiagram
 - The mod does not create, edit, or replace save files.
 - The mod does not change startup logo video files.
 - The mod does not change `WFAutoSaveOverlay`.
-- A `SkipStartupWarnings : 1` entry can load the mod before blocked `enabled.txt` mods.
+- The mod loads through `enabled.txt` after MorePlayers completes mod discovery.
+- The local deployment does not require a `mods.txt` load-order entry.
 
 ## Runtime source
 
@@ -74,9 +75,9 @@ end
 [SkipStartupWarnings] Load requested: profile 1
 ```
 
-Wayfinder's local deployment lists `SkipStartupWarnings : 1` near the top of
-`Atlas/Binaries/Win64/Mods/mods.txt`. This explicit load order prevents a
-blocking `enabled.txt` mod from delaying SkipStartupWarnings.
+The current MorePlayers native companion defers hook activation until the UE4SS
+event loop starts. This keeps `enabled.txt` discovery unblocked and lets
+SkipStartupWarnings register its warning and profile hooks normally.
 
 Related: [Project summary](../summary.md),
 [Runtime reflection](../runtime/reflection.md), and

@@ -119,15 +119,10 @@ its normal autosave indicator during gameplay.
 Profile auto-loading uses Wayfinder's existing profile selection and load
 functions. The mod does not edit or replace save files.
 
-UE4SS loads explicit `mods.txt` entries before mods that use only `enabled.txt`.
-If another mod blocks later startup mods, add this line near the top of
-`Atlas\Binaries\Win64\Mods\mods.txt`:
-
-```text
-SkipStartupWarnings : 1
-```
-
-The `enabled.txt` file can remain installed. UE4SS does not start the same mod twice.
+SkipStartupWarnings is compatible with the current MorePlayers release. Both
+mods load through their `enabled.txt` files. MorePlayers defers its native hook
+activation until the UE4SS event loop starts, so it does not block this mod.
+No `mods.txt` entry is required.
 
 ## Troubleshooting
 
@@ -141,8 +136,8 @@ missing, unreadable, or cannot be selected.
 
 `Airship menu library is unavailable` means the mod could not access Wayfinder's menu service.
 
-If UE4SS does not report `Starting Lua mod 'SkipStartupWarnings'`, add the
-`mods.txt` entry from the compatibility section.
+If UE4SS does not report `Starting Lua mod 'SkipStartupWarnings'`, confirm that
+`enabled.txt` exists and update MorePlayers if an older release is installed.
 
 Remove the mod's `enabled.txt` file to disable the mod without deleting its configuration.
 

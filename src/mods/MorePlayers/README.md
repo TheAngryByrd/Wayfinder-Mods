@@ -24,6 +24,7 @@ files.
   - [Install MorePlayers](#install-moreplayers)
 - [Confirm the mod is working](#confirm-the-mod-is-working)
   - [Troubleshooting](#troubleshooting)
+- [Compatibility](#compatibility)
 - [Build](#build)
 - [Technical notes](#technical-notes)
 - [Attribution](#attribution)
@@ -196,6 +197,15 @@ For a Wayfinder crash, collect these files:
 %LOCALAPPDATA%\Wayfinder\Saved\Logs\Atlas.log
 %LOCALAPPDATA%\Wayfinder\Saved\Crashes
 ```
+
+## Compatibility
+
+MorePlayers does not block later UE4SS mods that use `enabled.txt`. Its native
+Steam and Wayfinder hooks activate after UE4SS finishes mod discovery and starts
+the event loop. The native hooks activate as one MinHook batch.
+
+SkipStartupWarnings can load after MorePlayers without an explicit `mods.txt`
+entry. Keep each mod's `enabled.txt` file installed.
 
 ## Build
 

@@ -6,7 +6,10 @@ is invalid. Lua diagnostics can also cause hitches during player joins.
 
 ```mermaid
 flowchart TD
-    Wayfinder --> Ready[Unreal initialized]
+    UE4SS --> Discover[Finish enabled.txt discovery]
+    Discover --> EventLoop[Start event loop]
+    EventLoop --> NativeBatch[Enable Steam and Wayfinder hook batch]
+    NativeBatch --> Ready[Unreal initialized]
     Ready --> Check[Validate all EOS exports]
     Check --> Hook[Enable EOS hook batch]
     Hook --> Steam[Steam callback]
@@ -30,6 +33,12 @@ flowchart TD
   against a game or SDK update.
 - EOS hook installation starts only after UE4SS reports that Unreal
   initialization is complete.
+- Steam and Wayfinder hook creation runs on the first UE4SS event-loop update.
+- The installer creates the Steam and full-party hooks while disabled and
+  enables both with one MinHook batch operation.
+- Activating an individual native hook during `on_program_start` blocked later
+  `enabled.txt` mods. Activating the hooks from a concurrent worker caused a
+  null execute access violation during Wayfinder initialization.
 - The installer resolves every required EOS export and verifies executable
   memory before it creates a hook.
 - The installer creates all EOS hooks while disabled. It then enables the

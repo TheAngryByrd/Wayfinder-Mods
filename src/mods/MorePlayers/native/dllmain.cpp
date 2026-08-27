@@ -120,7 +120,9 @@ EosUpdateSessionModificationFn g_eos_update_session_modification{};
 EosSessionSetMaxPlayersFn g_eos_session_set_max_players{};
 EosSessionAddAttributeFn g_eos_session_add_attribute{};
 std::atomic<int> g_limit{25};
-bool g_mh{};
+std::atomic<bool> g_mh{false};
+std::atomic<bool> g_install_requested{false};
+std::atomic<bool> g_install_complete{false};
 std::atomic<bool> g_eos_installed{false};
 std::atomic<bool> g_eos_installing{false};
 std::atomic<bool> g_eos_wait_logged{false};
@@ -433,7 +435,7 @@ void __cdecl update_host_session_full_party_hook(void* self, bool requested)
         + std::to_string(requested) + " instance=" + pointer_details(self));
 }
 
-bool install_wayfinder_full_party_hook()
+bool install_wayfinder_full_party_hook(void*& installed_target)
 {
     constexpr std::uintptr_t target_rva = 0x164D770;
     // Wayfinder updates can reuse this RVA. The previous bytes began at target +0xA and always failed this entry comparison.
@@ -457,6 +459,7 @@ bool install_wayfinder_full_party_hook()
         return false;
     }
 
+    installed_target = target;
     return hook_address(
         target,
         "UWFGameInstance::UpdateHostSessionFullParty[Wayfinder+0x164D770]",
@@ -464,27 +467,16 @@ bool install_wayfinder_full_party_hook()
         reinterpret_cast<void**>(&g_update_host_session_full_party));
 }
 
-bool hook(HMODULE dll, const char* export_name, void* replacement, void** original)
-{
-    void* target = reinterpret_cast<void*>(GetProcAddress(dll, export_name));
-    if (!target || MH_CreateHook(target, replacement, original) != MH_OK || MH_EnableHook(target) != MH_OK)
-    {
-        log(std::string("Unable to hook ") + export_name);
-        return false;
-    }
-    log(std::string("Hooked ") + export_name);
-    return true;
-}
-
 bool hook_address(void* target, const char* label, void* replacement, void** original)
 {
     log(std::string("Hook target ") + label + " address=" + pointer_details(target));
-    if (!target || MH_CreateHook(target, replacement, original) != MH_OK || MH_EnableHook(target) != MH_OK)
+    const MH_STATUS status = target ? MH_CreateHook(target, replacement, original) : MH_ERROR_NOT_EXECUTABLE;
+    if (status != MH_OK)
     {
-        log(std::string("Unable to hook ") + label);
+        log(std::string("Unable to create hook ") + label + " status=" + std::to_string(status));
         return false;
     }
-    log(std::string("Hooked ") + label);
+    log(std::string("Created hook ") + label);
     return true;
 }
 
@@ -613,8 +605,44 @@ void install()
     }
     log("Steamworks ABI: SDK=v157 interface=SteamMatchMaking009 pointer=" + pointer_details(matchmaking));
     void** vtable = *reinterpret_cast<void***>(matchmaking);
-    hook_address(vtable[31], "ISteamMatchmaking009::SetLobbyMemberLimit[v31]", reinterpret_cast<void*>(&limit_hook), reinterpret_cast<void**>(&g_set_limit));
-    install_wayfinder_full_party_hook();
+    void* steam_limit_target = vtable[31];
+    const bool steam_limit_created = hook_address(
+        steam_limit_target,
+        "ISteamMatchmaking009::SetLobbyMemberLimit[v31]",
+        reinterpret_cast<void*>(&limit_hook),
+        reinterpret_cast<void**>(&g_set_limit));
+    void* full_party_target{};
+    const bool full_party_created = install_wayfinder_full_party_hook(full_party_target);
+
+    const MH_STATUS queue_steam = steam_limit_created
+        ? MH_QueueEnableHook(steam_limit_target)
+        : MH_OK;
+    const MH_STATUS queue_full_party = full_party_created
+        ? MH_QueueEnableHook(full_party_target)
+        : MH_OK;
+    const bool any_created = steam_limit_created || full_party_created;
+    const MH_STATUS apply_status = any_created && queue_steam == MH_OK && queue_full_party == MH_OK
+        ? MH_ApplyQueued()
+        : MH_UNKNOWN;
+    if (!any_created || queue_steam != MH_OK || queue_full_party != MH_OK || apply_status != MH_OK)
+    {
+        if (steam_limit_created)
+        {
+            MH_RemoveHook(steam_limit_target);
+            g_set_limit = nullptr;
+        }
+        if (full_party_created)
+        {
+            MH_RemoveHook(full_party_target);
+            g_update_host_session_full_party = nullptr;
+        }
+        log("Unable to enable native hook batch status=" + std::to_string(apply_status));
+    }
+    else
+    {
+        if (steam_limit_created) log("Hooked ISteamMatchmaking009::SetLobbyMemberLimit[v31]");
+        if (full_party_created) log("Hooked UWFGameInstance::UpdateHostSessionFullParty[Wayfinder+0x164D770]");
+    }
 
     g_steam_friends = reinterpret_cast<SteamFriendsFn>(GetProcAddress(steam, "SteamAPI_SteamFriends_v017"));
     g_set_rich_presence = reinterpret_cast<SetRichPresenceFn>(GetProcAddress(steam, "SteamAPI_ISteamFriends_SetRichPresence"));
@@ -642,12 +670,30 @@ public:
 
     virtual ~UE4SSMod301()
     {
-        if (g_mh) { MH_DisableHook(MH_ALL_HOOKS); MH_Uninitialize(); }
+        if (g_mh.load()) { MH_DisableHook(MH_ALL_HOOKS); MH_Uninitialize(); }
     }
     virtual void on_update()
     {
+        if (g_install_requested.exchange(false))
+        {
+            try
+            {
+                install();
+            }
+            catch (const std::exception& error)
+            {
+                log(std::string("Native companion installation failed: ") + error.what());
+            }
+            catch (...)
+            {
+                log("Native companion installation failed: unknown error");
+            }
+            g_install_complete = true;
+            return;
+        }
+
         const std::uint64_t now = GetTickCount64();
-        if (g_mh && g_unreal_ready.load() && !g_eos_installed.load()
+        if (g_install_complete.load() && g_mh.load() && g_unreal_ready.load() && !g_eos_installed.load()
             && now >= g_eos_next_attempt.load())
         {
             if (!install_eos_diagnostics()) g_eos_next_attempt = now + 2000;
@@ -660,7 +706,11 @@ public:
         log("Unreal initialization complete; EOS readiness checks enabled");
     }
     virtual void on_ui_init() {}
-    virtual void on_program_start() { install(); }
+    virtual void on_program_start()
+    {
+        g_install_requested = true;
+        log("Native companion installation deferred until the event loop starts");
+    }
     virtual void on_lua_start(const void*, Opaque&, Opaque&, Opaque&, std::vector<Opaque*>&) {}
     virtual void on_lua_start(Opaque&, Opaque&, Opaque&, std::vector<Opaque*>&) {}
     virtual void on_lua_stop(const void*, Opaque&, Opaque&, Opaque&, std::vector<Opaque*>&) {}

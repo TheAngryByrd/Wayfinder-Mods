@@ -41,6 +41,11 @@ flowchart TD
 - C++ replaces Steam lobby limit requests lower than the configured limit.
 - C++ suppresses `UWFGameInstance::UpdateHostSessionFullParty` so Wayfinder
   does not publish the host as full after the third player joins.
+- C++ schedules native installation during `on_program_start` and runs it from
+  the first `on_update` call after UE4SS starts its event loop.
+- C++ creates the Steam and full-party hooks while disabled, queues both, and
+  activates them with one `MH_ApplyQueued` call.
+- Native startup must return before UE4SS continues `enabled.txt` discovery.
 - The supported function starts at `Wayfinder.exe + 0x164D770`.
 - Its validator matches the complete 24-byte prologue, beginning with
   `48 89 5C 24 10 48 89 74 24 18`.
@@ -79,6 +84,12 @@ The complete maintenance procedure is in
 [MorePlayersSteamLimit] Hooked UWFGameInstance::UpdateHostSessionFullParty[Wayfinder+0x164D770]
 [MorePlayers] Online party maximum phase=session-publication group_size=3.0->25.0
 [MorePlayers] Party beacon limits phase=recheck reservations=3->25 team_size=3->25 consumed=3
+```
+
+```cpp
+if (g_install_requested.exchange(false)) {
+    install();
+}
 ```
 
 ## Known limit
