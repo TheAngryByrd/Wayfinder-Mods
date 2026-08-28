@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -155,6 +156,9 @@ std::chrono::steady_clock::time_point g_next_config_check{};
 bool g_mh{};
 bool g_echo_hooks_active{};
 bool g_hook_install_complete{};
+std::atomic<bool> g_install_requested{};
+std::atomic<bool> g_unreal_ready{};
+std::atomic<std::uint64_t> g_install_next_attempt{};
 std::atomic<std::uint64_t> g_core_call_count{};
 std::atomic<std::uint64_t> g_result_call_count{};
 std::atomic<std::uint64_t> g_core_entry_log_count{};
@@ -163,6 +167,7 @@ std::atomic<std::uint64_t> g_item_log_count{};
 std::atomic<std::uint64_t> g_echo_roll_count{};
 std::mutex g_log_mutex;
 std::recursive_mutex g_loot_mutex;
+constexpr std::uint64_t install_delay_ms{5000};
 thread_local std::vector<LootTableRecordView*> g_active_records;
 thread_local std::vector<LootTableRecordView*> g_active_final_records;
 thread_local std::uint32_t g_loot_spawn_depth{};
@@ -1176,10 +1181,42 @@ public:
             MH_Uninitialize();
         }
     }
-    virtual void on_update() {}
-    virtual void on_unreal_init() {}
+    virtual void on_update()
+    {
+        const std::uint64_t now = GetTickCount64();
+        if (!g_install_requested.load() || !g_unreal_ready.load()
+            || now < g_install_next_attempt.load()
+            || !g_install_requested.exchange(false))
+        {
+            return;
+        }
+
+        try
+        {
+            install();
+        }
+        catch (const std::exception& error)
+        {
+            log(std::string("Native companion installation failed: ") + error.what());
+        }
+        catch (...)
+        {
+            log("Native companion installation failed: unknown error");
+        }
+        g_hook_install_complete = true;
+    }
+    virtual void on_unreal_init()
+    {
+        g_unreal_ready = true;
+        g_install_next_attempt = GetTickCount64() + install_delay_ms;
+        log("Unreal initialization complete; native hook installation delayed 5000 ms");
+    }
     virtual void on_ui_init() {}
-    virtual void on_program_start() { install(); }
+    virtual void on_program_start()
+    {
+        g_install_requested = true;
+        log("Native companion installation deferred until Unreal startup settles");
+    }
     virtual void on_lua_start(const void*, Opaque&, Opaque&, Opaque&, std::vector<Opaque*>&) {}
     virtual void on_lua_start(Opaque&, Opaque&, Opaque&, std::vector<Opaque*>&) {}
     virtual void on_lua_stop(const void*, Opaque&, Opaque&, Opaque&, std::vector<Opaque*>&) {}

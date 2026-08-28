@@ -338,6 +338,8 @@ Wayfinder\Atlas\Binaries\Win64\Mods\MoreDrops\MoreDropsNative.log
 message:
 
 ```text
+[MoreDropsNative] Native companion installation deferred until Unreal startup settles
+[MoreDropsNative] Unreal initialization complete; native hook installation delayed 5000 ms
 [MoreDropsNative] Native scaler active core=Wayfinder+0x1B12B40 result=Wayfinder+0x1B09200
 ```
 
@@ -407,6 +409,11 @@ dist\Wayfinder-MoreDrops-NexusMods.zip
 Use `-NoArchive` to create only the unpacked package.
 
 ## Technical notes
+
+The native companion schedules MinHook installation during `on_program_start`.
+It installs the hooks from the UE4SS event loop five seconds after Unreal
+initialization. This sequence lets UE4SS finish all `enabled.txt` mod discovery
+and lets Unreal startup settle before MoreDrops changes game code.
 
 MoreDrops hooks the core probability generator and the final result function:
 

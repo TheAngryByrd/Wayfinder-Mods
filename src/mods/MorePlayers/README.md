@@ -141,6 +141,7 @@ Confirm that the file contains these startup messages:
 ```text
 [MorePlayersSteamLimit] Native companion starting
 [MorePlayersSteamLimit] Config MaxPlayers=25
+[MorePlayersSteamLimit] Unreal initialization complete; EOS readiness checks delayed 5000 ms
 [MorePlayersSteamLimit] EOS hooks installed; configured capacity overrides enabled
 ```
 
@@ -202,7 +203,9 @@ For a Wayfinder crash, collect these files:
 
 MorePlayers does not block later UE4SS mods that use `enabled.txt`. Its native
 Steam and Wayfinder hooks activate after UE4SS finishes mod discovery and starts
-the event loop. The native hooks activate as one MinHook batch.
+the event loop. The native hooks activate as one MinHook batch. The EOS hook
+batch waits five seconds after Unreal initialization so it does not patch EOS
+during its initial startup calls.
 
 SkipStartupWarnings can load after MorePlayers without an explicit `mods.txt`
 entry. Keep each mod's `enabled.txt` file installed.

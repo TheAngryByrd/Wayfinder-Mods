@@ -45,6 +45,8 @@ flowchart TD
   the first `on_update` call after UE4SS starts its event loop.
 - C++ creates the Steam and full-party hooks while disabled, queues both, and
   activates them with one `MH_ApplyQueued` call.
+- EOS hook installation waits five seconds after Unreal initialization. This
+  avoids patching EOS during its initial startup calls.
 - Native startup must return before UE4SS continues `enabled.txt` discovery.
 - The supported function starts at `Wayfinder.exe + 0x164D770`.
 - Its validator matches the complete 24-byte prologue, beginning with

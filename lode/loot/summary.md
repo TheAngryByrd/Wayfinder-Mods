@@ -8,6 +8,9 @@ amount multipliers. Post-roll rules can block selected item stacks. Version
 ```mermaid
 flowchart LR
     Config[Multipliers and filter rules] --> Reload[Runtime config reload]
+    UE4SS[UE4SS mod discovery] --> Unreal[Unreal initialization]
+    Unreal --> EventLoop[Event-loop update after five seconds]
+    EventLoop --> Native
     Reload --> Native[MoreDrops native DLL]
     Source[Loot source] --> Spawner[WFLootSpawner]
     Native --> FinalHook[Final wrapper hook]
@@ -58,6 +61,8 @@ flowchart LR
 - The mod logs the first 1,000 Echo rarity rolls.
 - The mod logs the first ten calls for each selected gameplay loot stage.
 - Every native hook target requires a matching Wayfinder build signature.
+- Native hook installation runs from the event loop five seconds after Unreal
+  initialization and after UE4SS finishes `enabled.txt` mod discovery.
 
 ## Configuration example
 

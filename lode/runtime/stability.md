@@ -31,7 +31,7 @@ flowchart TD
 - Current logs show valid EOS API version fields and successful Steam limit
   results. This evidence supports the present layouts but cannot protect
   against a game or SDK update.
-- EOS hook installation starts only after UE4SS reports that Unreal
+- EOS hook installation starts five seconds after UE4SS reports that Unreal
   initialization is complete.
 - Steam and Wayfinder hook creation runs on the first UE4SS event-loop update.
 - The installer creates the Steam and full-party hooks while disabled and

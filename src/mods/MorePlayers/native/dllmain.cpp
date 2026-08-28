@@ -129,6 +129,7 @@ std::atomic<bool> g_eos_wait_logged{false};
 std::atomic<bool> g_unreal_ready{false};
 std::atomic<std::uint64_t> g_eos_next_attempt{};
 std::mutex g_log_mutex;
+constexpr std::uint64_t eos_install_delay_ms{5000};
 
 int limit() { return std::clamp(g_limit.load(), 3, 25); }
 void log(const std::string& message);
@@ -702,8 +703,8 @@ public:
     virtual void on_unreal_init()
     {
         g_unreal_ready = true;
-        g_eos_next_attempt = 0;
-        log("Unreal initialization complete; EOS readiness checks enabled");
+        g_eos_next_attempt = GetTickCount64() + eos_install_delay_ms;
+        log("Unreal initialization complete; EOS readiness checks delayed 5000 ms");
     }
     virtual void on_ui_init() {}
     virtual void on_program_start()
