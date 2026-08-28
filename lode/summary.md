@@ -7,8 +7,8 @@ spawner. MoreDrops also filters configured selected items and disallowed Echo
 rarities. Echo rejection uses Wayfinder's normal temporary-item exit before an
 inventory entry is appended. The root README lists available mods and shared
 contributor instructions. SkipStartupWarnings closes the epilepsy and autosave
-warning pages. It can load a configured existing profile before the main menu.
-Each mod owns its detailed guide.
+warning pages. It leaves the title prompt and later menus unchanged. Each mod
+owns its detailed guide.
 
 ```mermaid
 flowchart LR
@@ -37,7 +37,6 @@ flowchart LR
     StartupConfig --> WarningHooks[Startup warning hooks]
     WarningHooks --> WarningPages[Epilepsy and autosave pages]
     WarningHooks --> MenuExit[Airship menu removal]
-    StartupConfig --> ProfileLoad[Configured existing profile load]
 ```
 
 ## Current contract
@@ -109,7 +108,6 @@ SkipStartupWarnings configuration:
 ```ini
 SkipEpilepsyWarning=1
 SkipAutoSaveWarning=1
-AutoLoadProfile=1
 ```
 
 Related: [Session capacity](runtime/session-capacity.md), [Drop scaling](loot/drop-scaling.md),

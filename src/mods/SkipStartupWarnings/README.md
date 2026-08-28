@@ -1,8 +1,8 @@
 # Wayfinder SkipStartupWarnings
 
 SkipStartupWarnings closes the epilepsy and autosave warning pages when
-Wayfinder starts. It can also select and load an existing save profile.
-The mod preserves the normal in-game autosave indicator.
+Wayfinder starts. The mod leaves the title prompt, profile selector, main menu,
+and in-game autosave indicator unchanged.
 
 The mod installs one UE4SS Lua script and a Wayfinder-specific UE4SS signature.
 It does not replace the Wayfinder executable, game packages, videos, or save files.
@@ -29,23 +29,15 @@ Close Wayfinder. Then edit this installed file:
 Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings\config.ini
 ```
 
-The default configuration skips both warning pages and loads the first profile:
+The default configuration skips both warning pages:
 
 ```ini
 SkipEpilepsyWarning=1
 SkipAutoSaveWarning=1
-AutoLoadProfile=1
 ```
 
-Set a warning option to `0` to show that warning.
-
-`AutoLoadProfile` uses the profile numbers shown in Wayfinder. Set it to `1`
-for the first profile or `2` for the second profile. Set it to `0` to keep the
-profile selector open.
-
-The mod loads only a profile that contains save data. An empty, missing, or
-unreadable profile leaves the profile selector open. Restart Wayfinder after
-each configuration change.
+Set a warning option to `0` to show that warning. Restart Wayfinder after each
+configuration change.
 
 ## Install
 
@@ -87,8 +79,8 @@ Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings\Scripts\main.lua
 
 ## Confirm the mod is working
 
-Start Wayfinder. The game must continue without both warning pages. With the
-default configuration, the game must also load the first existing profile.
+Start Wayfinder. The game must continue without the epilepsy and autosave
+warning pages. Use the normal controls at the title prompt and all later menus.
 
 Open this file:
 
@@ -99,13 +91,11 @@ Wayfinder\Atlas\Binaries\Win64\UE4SS.log
 Confirm that the file contains these messages:
 
 ```text
-[SkipStartupWarnings] Config epilepsy=enabled autosave=enabled profile=1
+[SkipStartupWarnings] Config epilepsy=enabled autosave=enabled
 [SkipStartupWarnings] Hook ready: epilepsy
 [SkipStartupWarnings] Hook ready: autosave
-[SkipStartupWarnings] Profile auto-load ready: profile 1
 [SkipStartupWarnings] Skipped: epilepsy
 [SkipStartupWarnings] Skipped: autosave
-[SkipStartupWarnings] Load requested: profile 1
 ```
 
 ## Compatibility
@@ -116,9 +106,6 @@ The video replacer controls logo videos. SkipStartupWarnings controls two UMG wa
 SkipStartupWarnings does not disable `WFAutoSaveOverlay`. Wayfinder can still show
 its normal autosave indicator during gameplay.
 
-Profile auto-loading uses Wayfinder's existing profile selection and load
-functions. The mod does not edit or replace save files.
-
 SkipStartupWarnings is compatible with the current MorePlayers release. Both
 mods load through their `enabled.txt` files. MorePlayers defers its native hook
 activation until the UE4SS event loop starts, so it does not block this mod.
@@ -128,13 +115,11 @@ No `mods.txt` entry is required.
 
 If a warning remains visible, search `UE4SS.log` for `[SkipStartupWarnings]`.
 
-If the profile selector remains visible, search the same log for a profile
-message. The mod leaves the selector open when the configured profile is empty,
-missing, unreadable, or cannot be selected.
+`Hook unavailable` means that the current Wayfinder build changed or did not
+load the expected Blueprint function.
 
-`Hook unavailable` means the current Wayfinder build changed or did not load the expected Blueprint function.
-
-`Airship menu library is unavailable` means the mod could not access Wayfinder's menu service.
+`Airship menu library is unavailable` means that the mod could not access
+Wayfinder's menu service.
 
 If UE4SS does not report `Starting Lua mod 'SkipStartupWarnings'`, confirm that
 `enabled.txt` exists and update MorePlayers if an older release is installed.
@@ -167,8 +152,3 @@ The Lua script registers post-construction hooks for these Blueprint functions:
 
 Each hook finishes the page transition and calls Wayfinder's
 `RemoveFromAirshipMenu` function. A failed removal leaves the warning page available.
-
-Profile auto-loading waits for `WFProfileSelectPage:InternalProfileInitialized`.
-It finds the matching `WFSaveProfileWidget`, checks `bHasData`, and activates the
-widget's normal `OnBaseButtonClicked` function. It calls `CreateOrLoadProfile`
-only after Wayfinder reports the configured profile as selected with save data.

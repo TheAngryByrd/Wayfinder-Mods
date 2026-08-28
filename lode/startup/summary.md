@@ -1,40 +1,32 @@
 # Startup warning skip
 
 SkipStartupWarnings is a standalone UE4SS Lua mod. It closes Wayfinder's
-epilepsy and autosave warning pages during startup. It can select and load a
-configured existing profile. The mod does not suppress the in-game autosave
-indicator.
+epilepsy and autosave warning pages during startup. It leaves the title prompt,
+profile selector, main menu, and in-game autosave indicator unchanged.
 
 ```mermaid
 sequenceDiagram
     participant Wayfinder
     participant Warning as Startup warning page
-    participant Profile as Profile selector
     participant Mod as SkipStartupWarnings
     participant Menu as Airship menu
     Wayfinder->>Warning: Construct page
     Warning->>Mod: Run post-construction hook
     Mod->>Warning: Finish transition
     Mod->>Menu: Remove warning page
-    Wayfinder->>Profile: Initialize profile data
-    Profile->>Mod: Profile data is ready
-    Mod->>Profile: Select configured existing profile
-    Mod->>Profile: Request normal profile load
 ```
 
 ## Contract
 
 - `SkipEpilepsyWarning=1` closes `UI_EpilepsyWarningPage_C`.
+- `SkipEpilepsyWarning=0` leaves the epilepsy warning open.
 - `SkipAutoSaveWarning=1` closes `UI_AutoSaveWarningPage_C`.
-- `AutoLoadProfile=1` selects and loads the first existing profile.
-- `AutoLoadProfile=0` leaves the profile selector open.
-- Profile numbers in the configuration are one-based.
-- Each option defaults to enabled.
-- The Lua hook runs after the Blueprint `Construct` function.
+- `SkipAutoSaveWarning=0` leaves the autosave warning open.
+- Both options default to enabled.
+- Each Lua hook runs after the Blueprint `Construct` function.
 - The hook uses Wayfinder's normal Airship menu removal function.
 - A failed skip leaves the warning page available.
-- An empty, missing, unreadable, or unselectable profile leaves the selector open.
-- The mod checks `bHasData` before it requests a profile load.
+- The mod does not act on the title prompt or later menus.
 - The mod does not create, edit, or replace save files.
 - The mod does not change startup logo video files.
 - The mod does not change `WFAutoSaveOverlay`.
@@ -56,28 +48,19 @@ RegisterHook(function_path, function(context_parameter)
 end)
 ```
 
-The profile hook waits for `WFProfileSelectPage:InternalProfileInitialized`.
-It activates the matching `WFSaveProfileWidget` and verifies Wayfinder's
-selected-profile state before it calls `CreateOrLoadProfile`.
-
-```lua
-if selected_profile_matches(page, target_index) then
-    request_profile_load(page, AUTO_LOAD_PROFILE)
-end
-```
-
 ## Runtime example
 
 ```text
+[SkipStartupWarnings] Config epilepsy=enabled autosave=enabled
 [SkipStartupWarnings] Hook ready: epilepsy
+[SkipStartupWarnings] Hook ready: autosave
 [SkipStartupWarnings] Skipped: epilepsy
-[SkipStartupWarnings] Profile auto-load ready: profile 1
-[SkipStartupWarnings] Load requested: profile 1
+[SkipStartupWarnings] Skipped: autosave
 ```
 
 The current MorePlayers native companion defers hook activation until the UE4SS
 event loop starts. This keeps `enabled.txt` discovery unblocked and lets
-SkipStartupWarnings register its warning and profile hooks normally.
+SkipStartupWarnings register its two warning hooks normally.
 
 Related: [Project summary](../summary.md),
 [Runtime reflection](../runtime/reflection.md), and
