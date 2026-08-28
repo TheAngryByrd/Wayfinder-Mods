@@ -42,7 +42,10 @@ function Get-MarkdownAnchor {
 
 foreach ($markdownPath in $Path) {
     $resolvedPath = (Resolve-Path -LiteralPath $markdownPath).Path
-    $content = Get-Content -LiteralPath $resolvedPath -Raw
+    $content = [System.IO.File]::ReadAllText(
+        $resolvedPath,
+        [System.Text.UTF8Encoding]::new($false, $true)
+    )
     $startMarker = '<!-- toc:start -->'
     $endMarker = '<!-- toc:end -->'
     $startIndex = $content.IndexOf($startMarker, [System.StringComparison]::Ordinal)

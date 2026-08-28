@@ -164,13 +164,13 @@ Probability decides whether a loot entry drops. MoreDrops uses this
 calculation for a direct core call:
 
 ```text
-scaled probability = original probability ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â CoreProbabilityMultiplier
+scaled probability = original probability * CoreProbabilityMultiplier
 ```
 
 MoreDrops uses this calculation for a final wrapper call:
 
 ```text
-scaled probability = original probability ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â FinalProbabilityMultiplier ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â CoreProbabilityMultiplier
+scaled probability = original probability * FinalProbabilityMultiplier * CoreProbabilityMultiplier
 ```
 
 Wayfinder treats a probability of `100` as guaranteed in the observed loot
@@ -222,20 +222,20 @@ Minimum and maximum amounts decide the quantity after a probability roll
 succeeds. MoreDrops uses these calculations:
 
 ```text
-scaled minimum = original minimum ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â MinAmountMultiplier
-scaled maximum = original maximum ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â MaxAmountMultiplier
+scaled minimum = original minimum * MinAmountMultiplier
+scaled maximum = original maximum * MaxAmountMultiplier
 ```
 
 With `MinAmountMultiplier=5.0` and `MaxAmountMultiplier=10.0`:
 
 | Original range | Scaled range | Possible amount |
 | --- | --- | --- |
-| `1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ1` | `5ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ10` | 5 through 10 |
-| `1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ2` | `5ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ20` | 5 through 20 |
-| `2ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ4` | `10ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ40` | 10 through 40 |
-| `5ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ10` | `25ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ100` | 25 through 100 |
+| `1-1` | `5-10` | 5 through 10 |
+| `1-2` | `5-20` | 5 through 20 |
+| `2-4` | `10-40` | 10 through 40 |
+| `5-10` | `25-100` | 25 through 100 |
 
-Runtime diagnostics confirmed that original `1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ1` entries produced amounts
+Runtime diagnostics confirmed that original `1-1` entries produced amounts
 from `5` through `10` with these settings.
 
 ### Configuration examples
@@ -250,7 +250,7 @@ MinAmountMultiplier=1.0
 MaxAmountMultiplier=1.0
 ```
 
-A 25% entry becomes 50%. An original `1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ3` amount remains `1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ3`.
+A 25% entry becomes 50%. An original `1-3` amount remains `1-3`.
 
 Double probability and amounts:
 
@@ -262,7 +262,7 @@ MinAmountMultiplier=2.0
 MaxAmountMultiplier=2.0
 ```
 
-A 25% entry becomes 50%. An original `1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ3` amount becomes `2ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ6`.
+A 25% entry becomes 50%. An original `1-3` amount becomes `2-6`.
 
 Increase maximum amounts more than minimum amounts:
 
@@ -274,7 +274,7 @@ MinAmountMultiplier=2.0
 MaxAmountMultiplier=5.0
 ```
 
-A 10% entry becomes 50%. An original `1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ3` amount becomes `2ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ15`.
+A 10% entry becomes 50%. An original `1-3` amount becomes `2-15`.
 
 ### Invalid amount ranges
 
@@ -282,11 +282,11 @@ Independent multipliers can make the scaled maximum smaller than the scaled
 minimum. MoreDrops sets the maximum equal to the minimum in this condition.
 
 ```text
-Original range: 3ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ4
+Original range: 3-4
 MinAmountMultiplier: 10
 MaxAmountMultiplier: 1
-Calculated range: 30ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ4
-Corrected range: 30ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ30
+Calculated range: 30-4
+Corrected range: 30-30
 ```
 
 ## Install

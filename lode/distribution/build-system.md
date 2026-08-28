@@ -59,6 +59,8 @@ The root `README.md` lists each mod, contributor guidance, build usage, and the 
 Each `src/mods/<ModName>/README.md` file contains the complete mod guide.
 The build copies the same mod README into the generated package.
 The TOC script updates the root, mod, and native README files.
+The TOC script reads strict UTF-8 and writes UTF-8 without a byte-order mark.
+Invalid UTF-8 stops the update instead of replacing or expanding text.
 
 ## Commands
 
@@ -93,6 +95,7 @@ Use `-NoArchive` to create unpacked package directories without ZIP files.
 - A Lua-only mod does not need a `native` directory.
 - Each mod has a complete source README.
 - The source README and packaged README contain identical text.
+- TOC updates reject invalid UTF-8 input.
 
 Related: [Distribution summary](summary.md),
 [Project practices](../practices.md), and [Project summary](../summary.md).
