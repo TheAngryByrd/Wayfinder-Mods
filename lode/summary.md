@@ -3,9 +3,11 @@
 This repository is a manifest-based collection of Wayfinder mods. MorePlayers
 raises the configured player limit across Unreal, EOS, and Steam. MoreDrops
 scales loot probability and amount ranges through Wayfinder's central loot
-spawner. MoreDrops also filters configured selected items and disallowed Echo
-rarities. Echo rejection uses Wayfinder's normal temporary-item exit before an
-inventory entry is appended. The root README lists available mods and shared
+spawner. MoreDrops also filters configured selected items, disallowed Echo
+rarities, and disallowed accessory or relic rarities. Echo rejection uses
+Wayfinder's normal temporary-item exit before an inventory entry is appended.
+Accessory and relic filtering uses the selected-item manifest. The root README
+lists available mods and shared
 contributor instructions. SkipStartupWarnings closes the epilepsy and autosave
 warning pages. It leaves the title prompt and later menus unchanged. Each mod
 owns its detailed guide.
@@ -32,6 +34,8 @@ flowchart LR
     ItemFilter --> ItemGrant[Filtered item grant]
     DropsConfig --> EchoSetting[Echo rarity allow-list]
     EchoSetting --> EchoReject[Pre-append Echo rejection]
+    DropsConfig --> AccessorySetting[Accessory rarity allow-list]
+    AccessorySetting --> ItemFilter
     ItemFilter --> ItemLog[Item diagnostic keys]
     LootLua --> Trace[Loot-stage diagnostics]
     StartupConfig --> WarningHooks[Startup warning hooks]
@@ -56,6 +60,9 @@ flowchart LR
 - MoreDrops applies the Echo rarity allow-list during synchronous central loot spawning.
 - A disallowed Echo uses Wayfinder's normal temporary-item cleanup before append.
 - Echo filtering fails open when the runtime path cannot be verified.
+- MoreDrops applies the accessory rarity allow-list to accessory and relic loot.
+- Accessory recipe rows bypass the rarity filter.
+- An unknown accessory or relic row fails open and stays in the loot result.
 - MoreDrops does not move or destroy generated inventory entries.
 - MoreDrops does not run the unsafe Lua item-catalog scan.
 - Item diagnostics provide keys for observed loot items.
@@ -95,6 +102,9 @@ DataTableName:ItemRowName=0
 
 [EchoFilter]
 AllowedRarities=All
+
+[AccessoryFilter]
+AllowedRarities=Epic
 ```
 
 MoreDrops confirms an accepted runtime configuration with this log prefix:

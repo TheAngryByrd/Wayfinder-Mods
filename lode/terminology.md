@@ -21,6 +21,8 @@
 - **Item catalog** - A planned item-definition list. The current UE4SS Lua generator is disabled because reflected array conversion crashes.
 - **Echo rarity** - The Common, Uncommon, Rare, or Epic rarity assigned to one generated Echo. Rare is blue. Epic is purple.
 - **Echo rarity allow-list** - The configured rarities that MoreDrops permits Wayfinder to append during a central loot spawn.
+- **Accessory rarity allow-list** - The configured rarities that MoreDrops keeps for selected accessory and relic equipment. Recipe rows bypass this filter.
+- **Fail open** - Keep an item when the mod cannot verify the item type or rarity.
 - **Config hot reload** - Applying a saved MoreDrops configuration before a later loot call without restarting Wayfinder.
 - **Startup warning page** - A UMG page that Wayfinder shows for epilepsy or autosave information before the main menu.
 - **In-game autosave indicator** - The gameplay overlay that shows when Wayfinder writes save data.

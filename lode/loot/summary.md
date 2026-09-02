@@ -3,7 +3,8 @@
 MoreDrops changes loot records before Wayfinder generates loot. The mod has
 independent core probability, final probability, minimum amount, and maximum
 amount multipliers. Post-roll rules can block selected item stacks. Version
-0.9.1 rejects disallowed Echo rarities before inventory entries are appended.
+0.10.0 rejects disallowed accessory and relic rarities in the item manifest.
+It rejects disallowed Echo rarities before inventory entries are appended.
 
 ```mermaid
 flowchart LR
@@ -25,6 +26,8 @@ flowchart LR
     Config --> EchoSetting[Echo rarity allow-list]
     EchoSetting --> EchoRoll[Temporary Echo rarity roll]
     EchoRoll --> EchoReject[Normal pre-append rejection]
+    Config --> AccessorySetting[Accessory rarity allow-list]
+    AccessorySetting --> ItemFilter
     Lua[MoreDrops Lua] --> Disabled[Catalog scan disabled]
     Lua --> Trace[Gameplay-stage traces]
 ```
@@ -43,11 +46,16 @@ flowchart LR
 - Item diagnostics provide stable keys for observed loot items.
 - The Echo rarity setting accepts `Common`, `Uncommon`, `Rare`, and `Epic`.
 - The native log reports the requested Echo rarity value.
-- Version 0.9.1 applies the allow-list during synchronous central loot spawning.
+- Version 0.10.0 applies the Echo allow-list during synchronous central loot spawning.
 - Rare Echoes are blue. Epic Echoes are purple.
 - A disallowed Echo follows Wayfinder's normal temporary-item cleanup path.
 - Echo filtering fails open when a rarity, call path, or hook signature is not verified.
 - MoreDrops does not compact or destroy generated inventory entries.
+- The accessory rarity setting accepts `Common`, `Uncommon`, `Rare`, and `Epic`.
+- The accessory filter applies only to `Accessory_` and `Relic_` rows in
+  `AccessoryInventoryItems`.
+- Accessory recipe rows bypass the accessory filter.
+- An unknown accessory or relic row fails open.
 - MoreDrops checks `config.ini` before valid loot calls, but no more than once per second.
 - A successful reload applies one complete settings object before scaling and filtering.
 - A missing or unreadable configuration leaves the active settings unchanged.
@@ -78,12 +86,15 @@ DataTableName:ItemRowName=0
 
 [EchoFilter]
 AllowedRarities=All
+
+[AccessoryFilter]
+AllowedRarities=Epic
 ```
 
 A successful runtime update has this form:
 
 ```text
-[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active path=...
+[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active accessory_rarities=Epic path=...
 ```
 
 Related: [Drop scaling](drop-scaling.md), [Item filtering](item-filtering.md),

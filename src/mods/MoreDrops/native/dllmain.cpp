@@ -20,6 +20,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -132,6 +133,7 @@ struct Settings
     float maximum{1.0f};
     std::unordered_map<std::string, float> item_probabilities;
     std::uint8_t echo_rarity_mask{0x1e};
+    std::uint8_t accessory_rarity_mask{0x1e};
 };
 
 struct OriginalEntry
@@ -165,6 +167,7 @@ std::atomic<std::uint64_t> g_core_entry_log_count{};
 std::atomic<std::uint64_t> g_final_entry_log_count{};
 std::atomic<std::uint64_t> g_item_log_count{};
 std::atomic<std::uint64_t> g_echo_roll_count{};
+std::atomic<std::uint64_t> g_accessory_log_count{};
 std::mutex g_log_mutex;
 std::recursive_mutex g_loot_mutex;
 constexpr std::uint64_t install_delay_ms{5000};
@@ -193,8 +196,9 @@ constexpr std::uint64_t diagnostic_call_limit = 200;
 constexpr std::uint64_t diagnostic_entry_limit = 40;
 constexpr std::uint64_t diagnostic_item_limit = 1000;
 constexpr std::uint64_t diagnostic_echo_limit = 1000;
+constexpr std::uint64_t diagnostic_accessory_limit = 1000;
 constexpr std::int32_t maximum_array_count = 4096;
-constexpr std::uint8_t all_echo_rarities = 0x1e;
+constexpr std::uint8_t all_rarities = 0x1e;
 
 std::filesystem::path module_path()
 {
@@ -279,7 +283,7 @@ bool parse_percentage(const std::string& text, float& target)
     }
 }
 
-std::string echo_rarity_name(std::uint8_t rarity)
+std::string rarity_name(std::uint8_t rarity)
 {
     switch (rarity)
     {
@@ -292,26 +296,26 @@ std::string echo_rarity_name(std::uint8_t rarity)
     }
 }
 
-std::string echo_rarity_mask_text(std::uint8_t mask)
+std::string rarity_mask_text(std::uint8_t mask)
 {
-    if (mask == all_echo_rarities) return "All";
+    if (mask == all_rarities) return "All";
     if (mask == 0) return "None";
     std::string result;
     for (std::uint8_t rarity = 1; rarity <= 4; ++rarity)
     {
         if ((mask & (1u << rarity)) == 0) continue;
         if (!result.empty()) result += ',';
-        result += echo_rarity_name(rarity);
+        result += rarity_name(rarity);
     }
     return result;
 }
 
-bool parse_echo_rarities(const std::string& text, std::uint8_t& target)
+bool parse_rarities(const std::string& text, std::uint8_t& target)
 {
     const std::string value = normalized_key(trim(text));
     if (value == "all")
     {
-        target = all_echo_rarities;
+        target = all_rarities;
         return true;
     }
     if (value == "none")
@@ -387,12 +391,17 @@ bool load_config(bool reloaded = false)
                 next.item_probabilities[normalized_key(key)] = probability;
             continue;
         }
-        if (section == "echofilter")
+        if (section == "echofilter" || section == "accessoryfilter")
         {
-            if (key == "AllowedRarities"
-                && !parse_echo_rarities(value, next.echo_rarity_mask))
+            std::uint8_t& target = section == "echofilter"
+                ? next.echo_rarity_mask
+                : next.accessory_rarity_mask;
+            if (key == "AllowedRarities" && !parse_rarities(value, target))
             {
-                log("Invalid AllowedRarities=" + value
+                log("Invalid " + std::string(section == "echofilter"
+                        ? "EchoFilter"
+                        : "AccessoryFilter")
+                    + " AllowedRarities=" + value
                     + "; use All, None, or Common,Uncommon,Rare,Epic");
             }
             continue;
@@ -434,9 +443,10 @@ bool load_config(bool reloaded = false)
         << " minimum=" << g_settings.minimum
         << " maximum=" << g_settings.maximum
         << " item_probability_rules=" << g_settings.item_probabilities.size()
-        << " echo_rarities_requested=" << echo_rarity_mask_text(g_settings.echo_rarity_mask)
+        << " echo_rarities_requested=" << rarity_mask_text(g_settings.echo_rarity_mask)
         << " echo_filter="
         << (g_echo_hooks_active ? "active" : (g_hook_install_complete ? "unavailable" : "pending"))
+        << " accessory_rarities=" << rarity_mask_text(g_settings.accessory_rarity_mask)
         << " path=" << path.string();
     log(out.str());
     const double combined_probability = static_cast<double>(g_settings.core_probability)
@@ -577,8 +587,8 @@ void log_echo_roll(
     std::ostringstream out;
     out << "Echo roll diagnostic call=" << call
         << " item_key=" << item_key
-        << " rarity=" << echo_rarity_name(rarity)
-        << " allowed_rarities=" << echo_rarity_mask_text(g_settings.echo_rarity_mask)
+        << " rarity=" << rarity_name(rarity)
+        << " allowed_rarities=" << rarity_mask_text(g_settings.echo_rarity_mask)
         << " decision=" << decision;
     log(out.str());
     if (call == diagnostic_echo_limit)
@@ -658,7 +668,7 @@ void* echo_gate_target(const EchoItemView* item) noexcept
                 {
                     log("Echo filter diagnostic call=" + std::to_string(pending.call)
                         + " item_key=" + pending.item_key
-                        + " rarity=" + echo_rarity_name(pending.rarity)
+                        + " rarity=" + rarity_name(pending.rarity)
                         + " action=rejected-before-append");
                 }
                 catch (...)
@@ -699,6 +709,35 @@ const float* find_item_probability(const ItemIdentity& identity)
     return match == g_settings.item_probabilities.end() ? nullptr : &match->second;
 }
 
+struct AccessoryClassification
+{
+    bool equipment{};
+    std::uint8_t rarity{};
+};
+
+AccessoryClassification classify_accessory(const ItemIdentity& identity)
+{
+    if (normalized_key(identity.data_table) != "accessoryinventoryitems") return {};
+
+    const std::string row = normalized_key(identity.row_name);
+    if (!row.starts_with("accessory_") && !row.starts_with("relic_")) return {};
+    if (row == "accessory_talenttester1"
+        || row == "accessory_talenttester2"
+        || row == "accessory_talenttester3")
+        return {true, 3};
+
+    std::size_t stem_length = row.size();
+    while (stem_length > 0
+        && std::isdigit(static_cast<unsigned char>(row[stem_length - 1])))
+        --stem_length;
+    const std::string_view stem(row.data(), stem_length);
+    if (stem.ends_with("_common")) return {true, 1};
+    if (stem.ends_with("_uc")) return {true, 2};
+    if (stem.ends_with("_rare")) return {true, 3};
+    if (stem.ends_with("_epic")) return {true, 4};
+    return {true, 0};
+}
+
 bool keep_item(float probability)
 {
     if (probability <= 0.0f) return false;
@@ -730,11 +769,41 @@ void log_item(std::uint64_t call, const char* destination,
         log("Item diagnostic limit reached; item filtering remains active");
 }
 
+void log_accessory(
+    std::uint64_t call,
+    const char* destination,
+    const InventoryItemCreationParamsView& item,
+    const ItemIdentity& identity,
+    const AccessoryClassification& accessory,
+    bool allowed)
+{
+    if (!accessory.equipment) return;
+    const auto number = g_accessory_log_count.fetch_add(1) + 1;
+    if (number > diagnostic_accessory_limit) return;
+    std::ostringstream out;
+    out << "Accessory diagnostic call=" << call
+        << " destination=" << destination
+        << " item_key=" << identity.key
+        << " amount=" << item.amount
+        << " level=" << item.level
+        << " rarity=" << (accessory.rarity == 0 ? "Unknown" : rarity_name(accessory.rarity))
+        << " allowed_rarities=" << rarity_mask_text(g_settings.accessory_rarity_mask)
+        << " action=";
+    if (accessory.rarity == 0) out << "kept-fail-open";
+    else out << (allowed ? "kept" : "removed");
+    log(out.str());
+    if (number == diagnostic_accessory_limit)
+        log("Accessory diagnostic limit reached; accessory filtering remains active");
+}
+
 struct ItemFilterStats
 {
     std::int32_t examined{};
     std::int32_t removed{};
     std::int64_t removed_units{};
+    std::int32_t accessories_examined{};
+    std::int32_t accessories_removed{};
+    std::int32_t accessories_unknown{};
 };
 
 ItemFilterStats filter_item_array(std::uint64_t call, ArrayView& array, const char* destination)
@@ -748,7 +817,23 @@ ItemFilterStats filter_item_array(std::uint64_t call, ArrayView& array, const ch
         auto& item = items[read_index];
         const ItemIdentity identity = item_identity(item);
         const float* probability = find_item_probability(identity);
-        const bool kept = !probability || keep_item(*probability);
+        const bool item_probability_allowed = !probability || keep_item(*probability);
+        const AccessoryClassification accessory = classify_accessory(identity);
+        bool accessory_allowed = true;
+        if (accessory.equipment)
+        {
+            ++stats.accessories_examined;
+            if (accessory.rarity == 0)
+                ++stats.accessories_unknown;
+            else
+            {
+                accessory_allowed = (g_settings.accessory_rarity_mask
+                    & (1u << accessory.rarity)) != 0;
+                if (!accessory_allowed) ++stats.accessories_removed;
+            }
+            log_accessory(call, destination, item, identity, accessory, accessory_allowed);
+        }
+        const bool kept = item_probability_allowed && accessory_allowed;
         ++stats.examined;
         log_item(call, destination, item, identity, probability, kept);
         if (kept)
@@ -779,6 +864,9 @@ void filter_core_result(std::uint64_t call, CoreResultView* result)
         total.examined += part.examined;
         total.removed += part.removed;
         total.removed_units += part.removed_units;
+        total.accessories_examined += part.accessories_examined;
+        total.accessories_removed += part.accessories_removed;
+        total.accessories_unknown += part.accessories_unknown;
     }
     if (call <= diagnostic_call_limit && (total.examined > 0 || !g_settings.item_probabilities.empty()))
     {
@@ -788,6 +876,17 @@ void filter_core_result(std::uint64_t call, CoreResultView* result)
             << " removed=" << total.removed
             << " removed_units=" << total.removed_units
             << " rules=" << g_settings.item_probabilities.size();
+        log(out.str());
+    }
+    if (call <= diagnostic_call_limit
+        && (total.accessories_examined > 0 || g_settings.accessory_rarity_mask != all_rarities))
+    {
+        std::ostringstream out;
+        out << "Accessory filter diagnostic call=" << call
+            << " examined=" << total.accessories_examined
+            << " removed=" << total.accessories_removed
+            << " unknown=" << total.accessories_unknown
+            << " allowed_rarities=" << rarity_mask_text(g_settings.accessory_rarity_mask);
         log(out.str());
     }
 }
@@ -1059,7 +1158,7 @@ bool install_echo_hooks(HMODULE wayfinder)
     log("Echo rarity filter active roll=Wayfinder+0x178C0F0 gate=Wayfinder+0x177E1A0"
         " cleanup=Wayfinder+0x177E38D"
         " mode=pre-append-fail-open allowed_rarities="
-        + echo_rarity_mask_text(g_settings.echo_rarity_mask));
+        + rarity_mask_text(g_settings.echo_rarity_mask));
     return true;
 }
 
@@ -1168,7 +1267,7 @@ protected:
     std::vector<std::shared_ptr<void>> GUITabs{};
 public:
     std::wstring ModName{L"MoreDropsNative"};
-    std::wstring ModVersion{L"0.9.1"};
+    std::wstring ModVersion{L"0.10.0"};
     std::wstring ModDescription{L"Scales Wayfinder loot probabilities and amounts."};
     std::wstring ModAuthors{L"Local companion implementation"};
     std::wstring ModIntendedSDKVersion{L"3.0.1"};

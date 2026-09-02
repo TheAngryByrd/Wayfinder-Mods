@@ -2,21 +2,28 @@
 
 MoreDrops identifies selected inventory items with their
 `DataTable:RowName` item key. An item probability rule decides whether the
-complete selected stack remains in the result manifest. The Echo rarity
-allow-list rejects a disallowed Echo through Wayfinder's normal temporary-item
-cleanup path before the inventory entry is appended.
+complete selected stack remains in the result manifest. The accessory rarity
+allow-list removes disallowed accessory and relic equipment from the same
+manifest. The Echo rarity allow-list rejects a disallowed Echo through
+Wayfinder's normal temporary-item cleanup path before the inventory entry is
+appended.
 
 ```mermaid
 flowchart TD
     Roll[Wayfinder probability roll] --> Selected[Selected item stack]
     Selected --> Identify[Read DataTable and RowName]
-    Identify --> Rule{Matching item rule?}
     Diagnostic[Item key from native log] --> Rule
     Rule -->|No| Keep[Keep complete stack]
     Rule -->|Yes| ItemRoll[Roll configured percentage]
     ItemRoll -->|Success| Grant[Grant selected stack]
     ItemRoll -->|Failure| Remove[Remove complete stack]
     Keep --> Grant
+    AccessoryConfig[Accessory rarity allow-list] --> AccessoryDecision{Accessory or relic rarity allowed?}
+    Identify --> AccessoryDecision
+    AccessoryDecision -->|Yes or not equipment| Rule{Matching item rule?}
+    AccessoryDecision -->|No| Remove
+    AccessoryDecision -->|Unknown equipment| KeepOpen[Keep fail open]
+    KeepOpen --> Rule
     EchoConfig[Echo rarity allow-list] --> EchoRoll[Wayfinder assigns rarity]
     EchoRoll --> EchoDecision{Rarity allowed?}
     EchoDecision -->|Yes| EchoKeep[Continue normal creation]
@@ -54,6 +61,17 @@ This value keeps only purple Epic Echoes. `Rare` means blue, and `Epic` means
 purple. `All` keeps all assigned rarities. `None` rejects all assigned
 rarities. The log reports the current value as `echo_rarities_requested`.
 
+The `[AccessoryFilter]` section accepts the same allow-list values.
+
+```ini
+[AccessoryFilter]
+AllowedRarities=Epic
+```
+
+This value keeps only purple Epic accessory and relic equipment. It does not
+filter `RecipeItem_` rows. An item probability rule and the accessory filter
+must both allow an item when both rules apply.
+
 ## Runtime contract
 
 - The core hook filters `Items`, `ItemsAsPickups`, and `ItemsAsFauxjectiles`.
@@ -79,14 +97,24 @@ rarities. The log reports the current value as `echo_rarities_requested`.
 - An unknown rarity or unverified call path keeps the Echo.
 - An Echo hook signature mismatch disables only Echo filtering.
 - An item probability rule can block an Echo item key regardless of rarity.
+- The accessory filter checks only `AccessoryInventoryItems` rows that start
+  with `Accessory_` or `Relic_`.
+- The current Wayfinder table contains 373 accessory rows, 149 relic rows, and
+  two recipe rows.
+- The accessory and relic row suffix identifies Common, Uncommon, Rare, or
+  Epic rarity. Three `Accessory_TalentTester` rows have an explicit Rare map.
+- The current classifier matches all 522 accessory and relic rows in the
+  extracted Wayfinder resource.
+- An unknown accessory or relic row stays in the result and logs
+  `kept-fail-open`.
 - Crafting, purchases, and item grants outside loot spawning remain unchanged.
 
 ## Stability contract
 
-Version 0.9.1 does not compact generated `FInventoryItemEntry` arrays. Version
+Version 0.10.0 does not compact generated `FInventoryItemEntry` arrays. Version
 0.8.0 moved owned entries and destroyed rejected entry specifications after
-creation. The current filter records the roll on a temporary specification and
-uses a normal Wayfinder rejection branch before the append.
+creation. The current Echo filter records the roll on a temporary specification
+and uses a normal Wayfinder rejection branch before the append.
 
 ```mermaid
 flowchart LR
@@ -113,6 +141,8 @@ the temporary object directly before the output count changes.
 
 ```text
 [MoreDropsNative] Item diagnostic call=1 destination=inventory item_key=DataTableName:ItemRowName amount=20 level=1 item_probability=0.00 action=removed
+[MoreDropsNative] Accessory diagnostic call=1 destination=inventory item_key=AccessoryInventoryItems:Accessory_Name_Rare1 amount=1 level=1 rarity=Rare allowed_rarities=Epic action=removed
+[MoreDropsNative] Accessory filter diagnostic call=1 examined=1 removed=1 unknown=0 allowed_rarities=Epic
 [MoreDropsNative] Echo roll diagnostic call=1 item_key=DataTableName:ItemRowName rarity=Rare allowed_rarities=Epic decision=reject-pending
 [MoreDropsNative] Echo filter diagnostic call=1 item_key=DataTableName:ItemRowName rarity=Rare action=rejected-before-append
 ```
@@ -123,7 +153,7 @@ The unsafe `ItemCatalog.tsv` Lua scan is disabled. Copy `item_key` from an
 The reload log reports the number of accepted item rules:
 
 ```text
-[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=2 echo_rarities_requested=Epic echo_filter=active path=...
+[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=2 echo_rarities_requested=Epic echo_filter=active accessory_rarities=Epic path=...
 ```
 
 Related: [Loot summary](summary.md), [Drop scaling](drop-scaling.md), and

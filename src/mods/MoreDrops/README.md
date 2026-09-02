@@ -3,8 +3,8 @@
 MoreDrops increases loot probability and item amounts in Wayfinder. Four
 independent multipliers control core probability, final probability, minimum
 amounts, and maximum amounts. Item probability rules can reduce or block
-specific selected items. Echo rarity rules reject disallowed Echoes before
-Wayfinder appends them to the generated inventory array.
+specific selected items. Rarity rules can reject disallowed Echoes,
+accessories, and relics.
 
 The mod changes loot processed by Wayfinder's central loot spawner. It does not
 change shop inventories or crafting costs.
@@ -20,6 +20,7 @@ packages, or save files.
   - [Hot reload](#hot-reload)
   - [Item probability](#item-probability)
   - [Echo rarity](#echo-rarity)
+  - [Accessory rarity](#accessory-rarity)
   - [Item catalog](#item-catalog)
   - [Probability examples](#probability-examples)
   - [Amount examples](#amount-examples)
@@ -41,7 +42,8 @@ Edit this installed file. Wayfinder can remain open:
 Wayfinder\Atlas\Binaries\Win64\Mods\MoreDrops\config.ini
 ```
 
-The default configuration increases probability and preserves item amounts:
+The default configuration increases probability, preserves item amounts, and
+keeps only Epic accessory and relic equipment:
 
 ```ini
 [General]
@@ -55,6 +57,9 @@ MaxAmountMultiplier=1.0
 
 [EchoFilter]
 AllowedRarities=All
+
+[AccessoryFilter]
+AllowedRarities=Epic
 ```
 
 `CoreProbabilityMultiplier` changes every core loot probability roll.
@@ -80,7 +85,7 @@ values. You do not need to restart Wayfinder.
 A successful reload adds this line to `MoreDropsNative.log`:
 
 ```text
-[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active path=...
+[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active accessory_rarities=Epic path=...
 ```
 
 If the file is unavailable, the current settings remain active. MoreDrops tries
@@ -145,6 +150,34 @@ This fail-open rule prevents the filter from acting on an unverified object.
 
 Use an `[ItemProbability]` rule when you want to block all stacks for one Echo
 item key, regardless of rarity.
+
+### Accessory rarity
+
+The `[AccessoryFilter]` section is an allow-list for accessory equipment and
+relic drops.
+
+```ini
+[AccessoryFilter]
+AllowedRarities=Epic
+```
+
+This example keeps only purple Epic accessories and relics. The setting
+accepts the same values as `[EchoFilter]`: `All`, `None`, `Common`,
+`Uncommon`, `Rare`, `Epic`, or a comma-separated list such as `Rare,Epic`.
+
+The filter uses rarity names encoded by Wayfinder's
+`AccessoryInventoryItems` data. It recognizes the 522 accessory and relic
+rows in the current game data. The two accessory recipe rows are not
+filtered.
+
+The filter runs after Wayfinder selects the item and before it grants the
+item. An unknown accessory or relic name stays in the loot result and uses
+the `kept-fail-open` diagnostic action. This rule prevents a game update from
+silently removing a new item.
+
+When an `[ItemProbability]` rule and `[AccessoryFilter]` both apply, both
+filters must keep the item. Either filter can remove the complete selected
+stack.
 
 ### Item catalog
 
@@ -353,16 +386,18 @@ contains `Config reloaded` with the new values.
 ```
 
 Generate loot, then find `Core Entry diagnostic`, `Final Entry diagnostic`,
-`Item diagnostic`, `Echo roll diagnostic`, `Echo filter diagnostic`,
-`Core result diagnostic`, and `Result diagnostic` in `MoreDropsNative.log`.
-Core lines cover all core calls. Final lines cover final wrapper calls. Item
-and Echo lines identify filter actions.
+`Item diagnostic`, `Accessory diagnostic`, `Echo roll diagnostic`,
+`Echo filter diagnostic`, `Core result diagnostic`, and `Result diagnostic`
+in `MoreDropsNative.log`. Core lines cover all core calls. Final lines cover
+final wrapper calls. Item, accessory, and Echo lines identify filter actions.
 
 ```text
 [MoreDropsNative] Final Entry diagnostic call=1 entry=0 probability=0.05->0.1 minimum=1->1 maximum=1->1
 [MoreDropsNative] Core Entry diagnostic call=1 entry=0 probability=0.1->1 minimum=1->5 maximum=1->10
 [MoreDropsNative] Item diagnostic call=1 destination=inventory item_key=DataTableName:ItemRowName amount=5 level=1 item_probability=0.00 action=removed
 [MoreDropsNative] Item filter diagnostic call=1 examined=1 removed=1 removed_units=5 rules=1
+[MoreDropsNative] Accessory diagnostic call=1 destination=inventory item_key=AccessoryInventoryItems:Accessory_Name_Rare1 amount=1 level=1 rarity=Rare allowed_rarities=Epic action=removed
+[MoreDropsNative] Accessory filter diagnostic call=1 examined=1 removed=1 unknown=0 allowed_rarities=Epic
 [MoreDropsNative] Core result diagnostic call=1 source=0x... entries=3 changed=3 manifest_items=0 manifest_item_units=0 ...
 [MoreDropsNative] Result diagnostic call=1 source=0x... entries=3 player_items=0 player_item_units=0 ...
 ```
@@ -376,9 +411,10 @@ The startup and loot logs must confirm the pre-append Echo filter is active:
 ```
 
 MoreDrops logs the first 40 changed entries for each hook. It also logs the
-first 1,000 selected items, the first 1,000 Echo rarity rolls, and 200 loot
-results after each game start. The limits prevent continuous log growth. Loot
-changes remain active after the diagnostic limits.
+first 1,000 selected items, the first 1,000 selected accessories and relics,
+the first 1,000 Echo rarity rolls, and 200 loot results after each game start.
+The limits prevent continuous log growth. Loot changes remain active after
+the diagnostic limits.
 
 MoreDrops also logs bounded `Loot trace` events for gameplay loot stages. These
 events identify paths that bypass the central Blueprint loot wrapper.
@@ -437,6 +473,12 @@ It records the stable item key in diagnostics before it applies post-roll item
 rules. The filter compacts the three item manifest arrays before Wayfinder
 grants them. Nested loot tables use one item probability roll at the outer core
 result.
+
+The accessory filter uses the same item manifest stage. It checks only rows
+from `AccessoryInventoryItems` whose names start with `Accessory_` or
+`Relic_`. It reads the static rarity suffix used by the current Wayfinder
+resource. Three internal talent tester rows use an explicit Rare mapping.
+Recipe rows bypass the filter. An unrecognized equipment row fails open.
 
 MoreDrops does not move or destroy an `FInventoryItemEntry` value. The Echo
 filter records rarity on the temporary item specification. A guarded assembly
