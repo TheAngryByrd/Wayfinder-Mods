@@ -13,7 +13,7 @@ world-boss, elite, and miniboss Echoes to Epic before the Echo rarity filter.
 Loadouts is a nonfunctional work in progress. Users must not install or use it.
 Saving a loadout can crash Wayfinder. The root README lists available
 mods and shared contributor instructions. SkipStartupWarnings closes the
-epilepsy and autosave warning pages. It leaves the title prompt and later menus unchanged. Each mod
+epilepsy and autosave warning pages. It leaves later menus unchanged. Each mod
 owns its detailed guide.
 
 ```mermaid
@@ -53,7 +53,7 @@ flowchart LR
     Validate --> Confirm[Inline confirmation]
     LoadoutsConfig --> LoadoutsUI[UMG profile page]
     LoadoutsUI --> LoadoutsPak[Loadouts.pak]
-    StartupConfig --> WarningHooks[Startup warning hooks]
+    StartupConfig[SkipStartupWarnings config] --> WarningHooks[Startup warning hooks]
     WarningHooks --> WarningPages[Epilepsy and autosave pages]
     WarningHooks --> MenuExit[Airship menu removal]
 ```
