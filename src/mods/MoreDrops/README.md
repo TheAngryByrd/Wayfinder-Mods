@@ -4,7 +4,9 @@ MoreDrops increases loot probability and item amounts in Wayfinder. Four
 independent multipliers control core probability, final probability, minimum
 amounts, and maximum amounts. Item probability rules can reduce or block
 specific selected items. Rarity rules can reject disallowed Echoes,
-accessories, and relics.
+accessories, and relics. An optional boss rule can guarantee eligible items
+from each boss-specific unique pool. Resource-backed overrides can change
+boss, world-boss, elite, and miniboss Echoes to Epic.
 
 The mod changes loot processed by Wayfinder's central loot spawner. It does not
 change shop inventories or crafting costs.
@@ -20,7 +22,9 @@ packages, or save files.
   - [Hot reload](#hot-reload)
   - [Item probability](#item-probability)
   - [Echo rarity](#echo-rarity)
+  - [Echo rarity override](#echo-rarity-override)
   - [Accessory rarity](#accessory-rarity)
+  - [Boss unique drops](#boss-unique-drops)
   - [Item catalog](#item-catalog)
   - [Probability examples](#probability-examples)
   - [Amount examples](#amount-examples)
@@ -60,6 +64,14 @@ AllowedRarities=All
 
 [AccessoryFilter]
 AllowedRarities=Epic
+
+[BossDrops]
+DropAllUniques=false
+
+[EchoRarityOverride]
+Bosses=Original
+WorldBosses=Original
+RareEnemies=Original
 ```
 
 `CoreProbabilityMultiplier` changes every core loot probability roll.
@@ -85,7 +97,7 @@ values. You do not need to restart Wayfinder.
 A successful reload adds this line to `MoreDropsNative.log`:
 
 ```text
-[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active accessory_rarities=Epic path=...
+[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active accessory_rarities=Epic boss_drop_all_uniques=true echo_override_bosses=Epic echo_override_world_bosses=Epic echo_override_rare_enemies=Epic boss_drop_hooks=active path=...
 ```
 
 If the file is unavailable, the current settings remain active. MoreDrops tries
@@ -151,6 +163,34 @@ This fail-open rule prevents the filter from acting on an unverified object.
 Use an `[ItemProbability]` rule when you want to block all stacks for one Echo
 item key, regardless of rarity.
 
+### Echo rarity override
+
+The `[EchoRarityOverride]` section can force resource-classified Echo groups
+to purple Epic after Wayfinder rolls their rarity.
+
+```ini
+[EchoRarityOverride]
+Bosses=Epic
+WorldBosses=Epic
+RareEnemies=Epic
+```
+
+Each setting accepts `Original` or `Epic`. `Original` preserves Wayfinder's
+roll. `Epic` changes a matching Echo to Epic before `[EchoFilter]` checks it.
+
+`Bosses` covers the exact Echo rows used by normal and Mythic boss sources.
+`WorldBosses` covers the current overland minibosses: Ancient One, Bone
+Crusher, and Howler. `RareEnemies` covers all current resource assets marked
+as elites or minibosses, including Grim Morningstar.
+
+The groups use exact `CreatureEchoItems` row names extracted from the current
+Wayfinder resources. Unknown rows keep their original rarity. A game update
+that adds Echo rows requires an updated MoreDrops classifier.
+
+The override does not bypass filters. If `[EchoFilter]` excludes Epic, a
+forced Epic Echo is rejected. An `[ItemProbability]` value of `0` also blocks
+the item.
+
 ### Accessory rarity
 
 The `[AccessoryFilter]` section is an allow-list for accessory equipment and
@@ -178,6 +218,52 @@ silently removing a new item.
 When an `[ItemProbability]` rule and `[AccessoryFilter]` both apply, both
 filters must keep the item. Either filter can remove the complete selected
 stack.
+
+### Boss unique drops
+
+The `[BossDrops]` section can guarantee eligible items from each
+boss-specific unique pool.
+
+```ini
+[BossDrops]
+DropAllUniques=true
+```
+
+This rule applies to normal and Mythic boss chests. It does not apply to named
+elites or normal enemy loot.
+
+The rule includes boss-specific weapons, armor, accessories, relics,
+cosmetics, resources, pets, trophies, titles, and Echoes. The rule excludes
+shared currency, spectra, gloomstone, summoning stones, and quest items.
+
+Wayfinder still evaluates tag queries, level rules, and other preconditions.
+An ineligible or disabled item stays excluded.
+
+The boss rule creates candidate drops. The existing filters remain
+authoritative. `ItemProbability`, `AccessoryFilter`, and `EchoFilter` can
+still remove an applicable item.
+
+For example, these settings guarantee each eligible boss unique and keep only
+
+```ini
+[BossDrops]
+DropAllUniques=true
+
+[EchoRarityOverride]
+Bosses=Epic
+WorldBosses=Epic
+RareEnemies=Epic
+
+[EchoFilter]
+AllowedRarities=Epic
+
+[AccessoryFilter]
+AllowedRarities=Epic
+```
+
+This configuration does not restore a Rare accessory after its rarity filter
+removes it. The Echo overrides run before the Echo filter. An
+`[ItemProbability]` value of `0` also remains a complete block.
 
 ### Item catalog
 
@@ -387,9 +473,10 @@ contains `Config reloaded` with the new values.
 
 Generate loot, then find `Core Entry diagnostic`, `Final Entry diagnostic`,
 `Item diagnostic`, `Accessory diagnostic`, `Echo roll diagnostic`,
-`Echo filter diagnostic`, `Core result diagnostic`, and `Result diagnostic`
-in `MoreDropsNative.log`. Core lines cover all core calls. Final lines cover
-final wrapper calls. Item, accessory, and Echo lines identify filter actions.
+`Echo filter diagnostic`, `Boss unique diagnostic`, `Core result diagnostic`,
+and `Result diagnostic` in `MoreDropsNative.log`. Core lines cover all core
+calls. Final lines cover final wrapper calls. The other lines identify
+guarantees and filter actions.
 
 ```text
 [MoreDropsNative] Final Entry diagnostic call=1 entry=0 probability=0.05->0.1 minimum=1->1 maximum=1->1
@@ -398,6 +485,8 @@ final wrapper calls. Item, accessory, and Echo lines identify filter actions.
 [MoreDropsNative] Item filter diagnostic call=1 examined=1 removed=1 removed_units=5 rules=1
 [MoreDropsNative] Accessory diagnostic call=1 destination=inventory item_key=AccessoryInventoryItems:Accessory_Name_Rare1 amount=1 level=1 rarity=Rare allowed_rarities=Epic action=removed
 [MoreDropsNative] Accessory filter diagnostic call=1 examined=1 removed=1 unknown=0 allowed_rarities=Epic
+[MoreDropsNative] Boss unique diagnostic call=1 action=boss-context-detected variables=11
+[MoreDropsNative] Boss unique diagnostic call=1 distribution=weighted mode=selective normal_entries=0 guaranteed_entries=2 router_entries=1
 [MoreDropsNative] Core result diagnostic call=1 source=0x... entries=3 changed=3 manifest_items=0 manifest_item_units=0 ...
 [MoreDropsNative] Result diagnostic call=1 source=0x... entries=3 player_items=0 player_item_units=0 ...
 ```
@@ -408,6 +497,7 @@ The startup and loot logs must confirm the pre-append Echo filter is active:
 [MoreDropsNative] Echo rarity filter active roll=Wayfinder+0x178C0F0 gate=Wayfinder+0x177E1A0 cleanup=Wayfinder+0x177E38D mode=pre-append-fail-open allowed_rarities=Epic
 [MoreDropsNative] Echo roll diagnostic call=1 item_key=DataTableName:ItemRowName rarity=Rare allowed_rarities=Epic decision=reject-pending
 [MoreDropsNative] Echo filter diagnostic call=1 item_key=DataTableName:ItemRowName rarity=Rare action=rejected-before-append
+[MoreDropsNative] Echo rarity override diagnostic call=2 item_key=CreatureEchoItems:GrimMorningstarEcho group=RareEnemies rolled_rarity=Rare forced_rarity=Epic action=forced
 ```
 
 MoreDrops logs the first 40 changed entries for each hook. It also logs the
@@ -461,6 +551,9 @@ Item name conversion: Wayfinder+0x1F08B30
 Echo rarity assignment: Wayfinder+0x178C0F0
 Inventory append gate: Wayfinder+0x177E1A0
 Temporary cleanup branch: Wayfinder+0x177E38D
+Inventory distribution helper: Wayfinder+0x1B0D5D0
+Uniform distribution helper: Wayfinder+0x1B0DCD0
+Weighted distribution helper: Wayfinder+0x1B0E5D0
 ```
 
 The final hook temporarily changes `Probability` for final wrapper calls. The
@@ -479,6 +572,21 @@ from `AccessoryInventoryItems` whose names start with `Accessory_` or
 `Relic_`. It reads the static rarity suffix used by the current Wayfinder
 resource. Three internal talent tester rows use an explicit Rare mapping.
 Recipe rows bypass the filter. An unrecognized equipment row fails open.
+
+The boss rule identifies boss contexts through their `CreatureEcho` and
+`CosmeticSet` loot variables. These two variables identify all 50 boss-chest
+sources in the current game data and no other source.
+
+The boss rule calls Wayfinder's normal distribution helpers once for each
+eligible unique entry. This expands weighted and uniform groups without direct
+result-array allocation. The `AP_Enemy_Boss` router keeps one generic
+selection and separately expands its source-specific accessory pools.
+
+The Echo rarity override uses exact `CreatureEchoItems` row names extracted
+from Wayfinder resources. The current classifier contains 57 boss rows, three
+overland world-boss rows, and 102 elite or miniboss rows. It classifies the
+item after Wayfinder assigns rarity, so delayed Echo creation does not depend
+on an earlier boss-call scope.
 
 MoreDrops does not move or destroy an `FInventoryItemEntry` value. The Echo
 filter records rarity on the temporary item specification. A guarded assembly

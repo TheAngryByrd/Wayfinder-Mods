@@ -72,6 +72,19 @@ This value keeps only purple Epic accessory and relic equipment. It does not
 filter `RecipeItem_` rows. An item probability rule and the accessory filter
 must both allow an item when both rules apply.
 
+The `[EchoRarityOverride]` section can change exact boss, world-boss, elite,
+and miniboss Echo rows to Epic before the Echo filter checks them.
+
+```ini
+[EchoRarityOverride]
+Bosses=Epic
+WorldBosses=Epic
+RareEnemies=Epic
+```
+
+Each key also accepts `Original`. The Echo filter remains authoritative after
+an override.
+
 ## Runtime contract
 
 - The core hook filters `Items`, `ItemsAsPickups`, and `ItemsAsFauxjectiles`.
@@ -111,7 +124,7 @@ must both allow an item when both rules apply.
 
 ## Stability contract
 
-Version 0.10.0 does not compact generated `FInventoryItemEntry` arrays. Version
+Version 0.12.0 does not compact generated `FInventoryItemEntry` arrays. Version
 0.8.0 moved owned entries and destroyed rejected entry specifications after
 creation. The current Echo filter records the roll on a temporary specification
 and uses a normal Wayfinder rejection branch before the append.
@@ -145,6 +158,7 @@ the temporary object directly before the output count changes.
 [MoreDropsNative] Accessory filter diagnostic call=1 examined=1 removed=1 unknown=0 allowed_rarities=Epic
 [MoreDropsNative] Echo roll diagnostic call=1 item_key=DataTableName:ItemRowName rarity=Rare allowed_rarities=Epic decision=reject-pending
 [MoreDropsNative] Echo filter diagnostic call=1 item_key=DataTableName:ItemRowName rarity=Rare action=rejected-before-append
+[MoreDropsNative] Echo rarity override diagnostic call=2 item_key=CreatureEchoItems:GrimMorningstarEcho group=RareEnemies rolled_rarity=Rare forced_rarity=Epic action=forced
 ```
 
 The unsafe `ItemCatalog.tsv` Lua scan is disabled. Copy `item_key` from an
@@ -156,5 +170,6 @@ The reload log reports the number of accepted item rules:
 [MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=2 echo_rarities_requested=Epic echo_filter=active accessory_rarities=Epic path=...
 ```
 
-Related: [Loot summary](summary.md), [Drop scaling](drop-scaling.md), and
-[Item catalog](item-catalog.md).
+Related: [Loot summary](summary.md),
+[Echo rarity overrides](echo-rarity-overrides.md), [Drop scaling](drop-scaling.md),
+and [Item catalog](item-catalog.md).

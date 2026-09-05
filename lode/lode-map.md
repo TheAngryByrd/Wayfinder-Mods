@@ -20,6 +20,8 @@ flowchart TD
     Loot --> Scaling[loot/drop-scaling.md]
     Loot --> ItemFiltering[loot/item-filtering.md]
     Loot --> ItemCatalog[loot/item-catalog.md]
+    Loot --> BossUniques[loot/boss-unique-drops.md]
+    Loot --> EchoOverrides[loot/echo-rarity-overrides.md]
     Map --> Distribution[distribution/summary.md]
     Distribution --> BuildSystem[distribution/build-system.md]
     Distribution --> ModIo[distribution/mod-io.md]
@@ -57,6 +59,8 @@ flowchart TD
 - [Drop scaling](loot/drop-scaling.md)
 - [Item filtering](loot/item-filtering.md)
 - [Item catalog](loot/item-catalog.md)
+- [Boss unique drops](loot/boss-unique-drops.md)
+- [Echo rarity overrides](loot/echo-rarity-overrides.md)
 
 ## Path example
 

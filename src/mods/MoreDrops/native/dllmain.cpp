@@ -25,6 +25,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "echo_rarity_groups.hpp"
+
 extern "C" void MoreDropsEchoAppendGate();
 extern "C" void* MoreDropsEchoGateTarget(const void* item);
 
@@ -64,6 +66,49 @@ struct InventoryItemCreationParamsView
     std::byte padding[8];
 };
 
+struct InventoryDistributionConfigView
+{
+    ArrayView items;
+    ArrayView loot_variable_types;
+};
+
+struct UniformDistributionConfigView
+{
+    ArrayView loot_entries;
+    ArrayView items;
+};
+
+struct WeightedDistributionEntryView
+{
+    DataTableRowHandleView weight;
+    std::byte weight_level_multiplier[0x28];
+    float amount_multiplier;
+    std::byte amount_padding[4];
+    ArrayView loot_handles;
+    ArrayView items;
+    ArrayView loot_variable_types;
+    std::byte tag_query[0x48];
+};
+
+struct WeightedDistributionConfigView
+{
+    ArrayView entries;
+};
+
+struct LootVariableView
+{
+    DataTableRowHandleView type;
+    ArrayView loot;
+    ArrayView items;
+    std::byte quest_state_query[0x48];
+};
+
+struct LootSpawnContextView
+{
+    std::byte before_loot_variables[0xd0];
+    ArrayView loot_variables;
+};
+
 struct EchoItemView
 {
     DataTableRowHandleView data;
@@ -77,7 +122,15 @@ struct LootEntryView
     std::byte probability_level_multiplier[0x2c];
     float minimum;
     float maximum;
-    std::byte remainder[0xf8];
+    std::byte amount_level_multiplier[0x28];
+    bool spawn_items_as_pickups;
+    std::uint8_t distribution_type;
+    std::byte config_alignment[6];
+    InventoryDistributionConfigView inventory;
+    std::byte pickup[0x30];
+    UniformDistributionConfigView uniform;
+    WeightedDistributionConfigView weighted;
+    std::byte tag_query[0x48];
 };
 
 struct LootTableRecordView
@@ -115,8 +168,19 @@ static_assert(sizeof(NameView) == 0x08);
 static_assert(sizeof(DataTableRowHandleView) == 0x10);
 static_assert(sizeof(InventoryItemCreationParamsView) == 0x20);
 static_assert(std::is_trivially_copyable_v<InventoryItemCreationParamsView>);
+static_assert(sizeof(InventoryDistributionConfigView) == 0x20);
+static_assert(sizeof(UniformDistributionConfigView) == 0x20);
+static_assert(sizeof(WeightedDistributionEntryView) == 0xb8);
+static_assert(std::is_trivially_copyable_v<WeightedDistributionEntryView>);
+static_assert(sizeof(WeightedDistributionConfigView) == 0x10);
+static_assert(sizeof(LootVariableView) == 0x78);
+static_assert(offsetof(LootSpawnContextView, loot_variables) == 0xd0);
 static_assert(offsetof(EchoItemView, echo_rarity) == 0x120);
 static_assert(sizeof(LootEntryView) == 0x130);
+static_assert(offsetof(LootEntryView, distribution_type) == 0x61);
+static_assert(offsetof(LootEntryView, inventory) == 0x68);
+static_assert(offsetof(LootEntryView, uniform) == 0xb8);
+static_assert(offsetof(LootEntryView, weighted) == 0xd8);
 static_assert(offsetof(LootTableRecordView, loot) == 0x8);
 static_assert(sizeof(LootResultView) == 0x70);
 static_assert(sizeof(CoreResultView) == 0x50);
@@ -125,6 +189,12 @@ using SpawnLootFn = LootResultView*(__fastcall*)(void*, LootResultView*, LootTab
 using GenerateLootFn = CoreResultView*(__fastcall*)(void*, CoreResultView*, LootTableRecordView*, void*, void*);
 using NameToStringFn = void(__fastcall*)(const NameView*, UnrealStringView*);
 using AssignEchoRarityFn = void(__fastcall*)(EchoItemView*, void*, std::int32_t, std::int32_t);
+using InventoryDistributionFn = void(__fastcall*)(
+    CoreResultView*, void*, InventoryDistributionConfigView*, void*, void*);
+using UniformDistributionFn = void(__fastcall*)(
+    CoreResultView*, void*, UniformDistributionConfigView*, void*, void*);
+using WeightedDistributionFn = void(__fastcall*)(
+    CoreResultView*, void*, WeightedDistributionConfigView*, void*, void*);
 struct Settings
 {
     float core_probability{2.0f};
@@ -134,6 +204,10 @@ struct Settings
     std::unordered_map<std::string, float> item_probabilities;
     std::uint8_t echo_rarity_mask{0x1e};
     std::uint8_t accessory_rarity_mask{0x1e};
+    bool drop_all_boss_uniques{};
+    bool force_boss_echoes_epic{};
+    bool force_world_boss_echoes_epic{};
+    bool force_rare_enemy_echoes_epic{};
 };
 
 struct OriginalEntry
@@ -148,6 +222,9 @@ SpawnLootFn g_spawn_loot{};
 GenerateLootFn g_generate_loot{};
 NameToStringFn g_name_to_string{};
 AssignEchoRarityFn g_assign_echo_rarity{};
+InventoryDistributionFn g_inventory_distribution{};
+UniformDistributionFn g_uniform_distribution{};
+WeightedDistributionFn g_weighted_distribution{};
 void* g_echo_append_trampoline{};
 void* g_echo_cleanup_target{};
 Settings g_settings{};
@@ -157,6 +234,7 @@ bool g_config_error_logged{};
 std::chrono::steady_clock::time_point g_next_config_check{};
 bool g_mh{};
 bool g_echo_hooks_active{};
+bool g_boss_hooks_active{};
 bool g_hook_install_complete{};
 std::atomic<bool> g_install_requested{};
 std::atomic<bool> g_unreal_ready{};
@@ -168,12 +246,16 @@ std::atomic<std::uint64_t> g_final_entry_log_count{};
 std::atomic<std::uint64_t> g_item_log_count{};
 std::atomic<std::uint64_t> g_echo_roll_count{};
 std::atomic<std::uint64_t> g_accessory_log_count{};
+std::atomic<std::uint64_t> g_boss_log_count{};
 std::mutex g_log_mutex;
 std::recursive_mutex g_loot_mutex;
 constexpr std::uint64_t install_delay_ms{5000};
 thread_local std::vector<LootTableRecordView*> g_active_records;
 thread_local std::vector<LootTableRecordView*> g_active_final_records;
 thread_local std::uint32_t g_loot_spawn_depth{};
+thread_local std::uint32_t g_boss_context_depth{};
+thread_local std::uint32_t g_boss_unique_force_depth{};
+thread_local std::vector<std::uint64_t> g_core_call_stack;
 
 struct PendingEchoRejection
 {
@@ -192,13 +274,21 @@ constexpr std::uintptr_t assign_echo_rarity_rva = 0x178C0F0;
 constexpr std::uintptr_t echo_rarity_call_site_rva = 0x177D76C;
 constexpr std::uintptr_t echo_append_gate_rva = 0x177E1A0;
 constexpr std::uintptr_t echo_cleanup_rva = 0x177E38D;
+constexpr std::uintptr_t inventory_distribution_rva = 0x1B0D5D0;
+constexpr std::uintptr_t uniform_distribution_rva = 0x1B0DCD0;
+constexpr std::uintptr_t weighted_distribution_rva = 0x1B0E5D0;
 constexpr std::uint64_t diagnostic_call_limit = 200;
 constexpr std::uint64_t diagnostic_entry_limit = 40;
 constexpr std::uint64_t diagnostic_item_limit = 1000;
 constexpr std::uint64_t diagnostic_echo_limit = 1000;
 constexpr std::uint64_t diagnostic_accessory_limit = 1000;
+constexpr std::uint64_t diagnostic_boss_limit = 1000;
 constexpr std::int32_t maximum_array_count = 4096;
 constexpr std::uint8_t all_rarities = 0x1e;
+constexpr std::uint8_t distribution_inventory = 0;
+constexpr std::uint8_t distribution_uniform = 2;
+constexpr std::uint8_t distribution_weighted = 3;
+constexpr float boss_guarantee_probability = 10000.0f;
 
 std::filesystem::path module_path()
 {
@@ -281,6 +371,43 @@ bool parse_percentage(const std::string& text, float& target)
     {
         return false;
     }
+}
+
+bool parse_boolean(const std::string& text, bool& target)
+{
+    const std::string value = normalized_key(trim(text));
+    if (value == "true" || value == "1" || value == "yes" || value == "on")
+    {
+        target = true;
+        return true;
+    }
+    if (value == "false" || value == "0" || value == "no" || value == "off")
+    {
+        target = false;
+        return true;
+    }
+    return false;
+}
+
+bool parse_echo_rarity_override(const std::string& text, bool& target)
+{
+    const std::string value = normalized_key(trim(text));
+    if (value == "original")
+    {
+        target = false;
+        return true;
+    }
+    if (value == "epic")
+    {
+        target = true;
+        return true;
+    }
+    return false;
+}
+
+const char* echo_rarity_override_text(bool force_epic)
+{
+    return force_epic ? "Epic" : "Original";
 }
 
 std::string rarity_name(std::uint8_t rarity)
@@ -406,6 +533,32 @@ bool load_config(bool reloaded = false)
             }
             continue;
         }
+        if (section == "bossdrops")
+        {
+            if (key == "DropAllUniques" && !parse_boolean(value, next.drop_all_boss_uniques))
+            {
+                log("Invalid BossDrops DropAllUniques=" + value
+                    + "; use true or false");
+            }
+            else if (key == "ForceEchoesEpic"
+                && !parse_boolean(value, next.force_boss_echoes_epic))
+            {
+                log("Invalid BossDrops ForceEchoesEpic=" + value
+                    + "; use true or false");
+            }
+            continue;
+        }
+        if (section == "echorarityoverride")
+        {
+            bool* setting{};
+            if (key == "Bosses") setting = &next.force_boss_echoes_epic;
+            else if (key == "WorldBosses") setting = &next.force_world_boss_echoes_epic;
+            else if (key == "RareEnemies") setting = &next.force_rare_enemy_echoes_epic;
+            if (setting && !parse_echo_rarity_override(value, *setting))
+                log("Invalid EchoRarityOverride " + key + "=" + value
+                    + "; use Original or Epic");
+            continue;
+        }
         if (section != "general") continue;
         float* setting{};
         if (key == "CoreProbabilityMultiplier")
@@ -447,6 +600,16 @@ bool load_config(bool reloaded = false)
         << " echo_filter="
         << (g_echo_hooks_active ? "active" : (g_hook_install_complete ? "unavailable" : "pending"))
         << " accessory_rarities=" << rarity_mask_text(g_settings.accessory_rarity_mask)
+        << " boss_drop_all_uniques="
+        << (g_settings.drop_all_boss_uniques ? "true" : "false")
+        << " echo_override_bosses="
+        << echo_rarity_override_text(g_settings.force_boss_echoes_epic)
+        << " echo_override_world_bosses="
+        << echo_rarity_override_text(g_settings.force_world_boss_echoes_epic)
+        << " echo_override_rare_enemies="
+        << echo_rarity_override_text(g_settings.force_rare_enemy_echoes_epic)
+        << " boss_drop_hooks="
+        << (g_boss_hooks_active ? "active" : (g_hook_install_complete ? "unavailable" : "pending"))
         << " path=" << path.string();
     log(out.str());
     const double combined_probability = static_cast<double>(g_settings.core_probability)
@@ -515,6 +678,23 @@ bool readable_range(const void* pointer, std::size_t size)
     return start >= region_start && start <= region_end && size <= region_end - start;
 }
 
+bool writable_range(const void* pointer, std::size_t size)
+{
+    if (!readable_range(pointer, size)) return false;
+    MEMORY_BASIC_INFORMATION information{};
+    if (!VirtualQuery(pointer, &information, sizeof(information))) return false;
+    switch (information.Protect & 0xff)
+    {
+    case PAGE_READWRITE:
+    case PAGE_WRITECOPY:
+    case PAGE_EXECUTE_READWRITE:
+    case PAGE_EXECUTE_WRITECOPY:
+        return true;
+    default:
+        return false;
+    }
+}
+
 std::string wide_to_utf8(const wchar_t* value, std::size_t length)
 {
     if (!value || length == 0) return {};
@@ -577,6 +757,406 @@ ItemIdentity item_identity(const InventoryItemCreationParamsView& item)
     return item_identity(item.data);
 }
 
+enum class EchoRarityGroup
+{
+    none,
+    bosses,
+    world_bosses,
+    rare_enemies,
+};
+
+template <std::size_t Size>
+bool contains_echo_row(
+    const std::array<std::string_view, Size>& rows,
+    const std::string& row_name)
+{
+    const std::string_view row{row_name};
+    return std::find(rows.begin(), rows.end(), row) != rows.end();
+}
+
+EchoRarityGroup echo_rarity_group(const ItemIdentity& identity)
+{
+    if (normalized_key(identity.data_table) != "creatureechoitems")
+        return EchoRarityGroup::none;
+    if (contains_echo_row(more_drops::boss_echo_rows, identity.row_name))
+        return EchoRarityGroup::bosses;
+    if (contains_echo_row(more_drops::world_boss_echo_rows, identity.row_name))
+        return EchoRarityGroup::world_bosses;
+    if (contains_echo_row(more_drops::rare_enemy_echo_rows, identity.row_name))
+        return EchoRarityGroup::rare_enemies;
+    return EchoRarityGroup::none;
+}
+
+const char* echo_rarity_group_name(EchoRarityGroup group)
+{
+    switch (group)
+    {
+    case EchoRarityGroup::bosses: return "Bosses";
+    case EchoRarityGroup::world_bosses: return "WorldBosses";
+    case EchoRarityGroup::rare_enemies: return "RareEnemies";
+    default: return "None";
+    }
+}
+
+bool force_echo_group_epic(EchoRarityGroup group)
+{
+    switch (group)
+    {
+    case EchoRarityGroup::bosses: return g_settings.force_boss_echoes_epic;
+    case EchoRarityGroup::world_bosses: return g_settings.force_world_boss_echoes_epic;
+    case EchoRarityGroup::rare_enemies: return g_settings.force_rare_enemy_echoes_epic;
+    default: return false;
+    }
+}
+
+bool valid_array_storage(const ArrayView& array, std::size_t stride)
+{
+    if (!valid_array(array)) return false;
+    if (array.count == 0) return true;
+    const auto count = static_cast<std::size_t>(array.count);
+    return stride <= std::numeric_limits<std::size_t>::max() / count
+        && readable_range(array.data, count * stride);
+}
+
+ArrayView empty_array()
+{
+    return {nullptr, 0, 0};
+}
+
+template <typename T>
+ArrayView vector_array(std::vector<T>& values)
+{
+    if (values.size() > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+        return empty_array();
+    const auto count = static_cast<std::int32_t>(values.size());
+    return {values.empty() ? nullptr : values.data(), count, count};
+}
+
+std::string row_name(const DataTableRowHandleView& handle)
+{
+    return normalized_key(name_text(handle.row_name));
+}
+
+bool is_boss_unique_variable(const DataTableRowHandleView& handle)
+{
+    const std::string name = row_name(handle);
+    return name == "uniqueresource"
+        || name == "creatureecho"
+        || name == "weaponset"
+        || name == "armorset"
+        || name == "cosmeticset"
+        || name == "petset"
+        || name == "trophyset"
+        || name == "profiletitle"
+        || name == "accessoryset"
+        || name.starts_with("accessorypool_")
+        || name.starts_with("eventitem_");
+}
+
+LootSpawnContextView* loot_context_from_handle(void* context_handle)
+{
+    if (!readable_range(context_handle, sizeof(void*))) return nullptr;
+    LootSpawnContextView* context{};
+    std::memcpy(&context, context_handle, sizeof(context));
+    return readable_range(context, sizeof(LootSpawnContextView)) ? context : nullptr;
+}
+
+bool is_boss_context(const LootSpawnContextView* context)
+{
+    if (!context
+        || !valid_array_storage(context->loot_variables, sizeof(LootVariableView)))
+        return false;
+    bool creature_echo{};
+    bool cosmetic_set{};
+    const auto* variables = static_cast<const LootVariableView*>(context->loot_variables.data);
+    for (std::int32_t index = 0; index < context->loot_variables.count; ++index)
+    {
+        const std::string name = row_name(variables[index].type);
+        creature_echo = creature_echo || name == "creatureecho";
+        cosmetic_set = cosmetic_set || name == "cosmeticset";
+        if (creature_echo && cosmetic_set) return true;
+    }
+    return false;
+}
+
+class BossContextScope
+{
+public:
+    explicit BossContextScope(bool active) : active_(active)
+    {
+        if (active_) ++g_boss_context_depth;
+    }
+    ~BossContextScope()
+    {
+        if (active_) --g_boss_context_depth;
+    }
+private:
+    bool active_;
+};
+
+class BossUniqueForceScope
+{
+public:
+    BossUniqueForceScope() { ++g_boss_unique_force_depth; }
+    ~BossUniqueForceScope() { --g_boss_unique_force_depth; }
+};
+
+std::uint64_t current_core_call()
+{
+    return g_core_call_stack.empty() ? 0 : g_core_call_stack.back();
+}
+
+void log_boss_diagnostic(const std::string& message)
+{
+    const auto number = g_boss_log_count.fetch_add(1) + 1;
+    if (number > diagnostic_boss_limit) return;
+    log("Boss unique diagnostic " + message);
+    if (number == diagnostic_boss_limit)
+        log("Boss unique diagnostic limit reached; boss guarantees remain active");
+}
+
+bool contains_boss_unique_variable(const ArrayView& variables)
+{
+    if (!valid_array_storage(variables, sizeof(DataTableRowHandleView))) return false;
+    const auto* handles = static_cast<const DataTableRowHandleView*>(variables.data);
+    for (std::int32_t index = 0; index < variables.count; ++index)
+    {
+        if (is_boss_unique_variable(handles[index])) return true;
+    }
+    return false;
+}
+
+enum class BossWeightedEntryKind
+{
+    normal,
+    unique,
+    router,
+};
+
+BossWeightedEntryKind classify_boss_weighted_entry(const WeightedDistributionEntryView& entry)
+{
+    if (!valid_array_storage(entry.loot_handles, sizeof(DataTableRowHandleView))
+        || !valid_array_storage(entry.items, sizeof(InventoryItemCreationParamsView))
+        || !valid_array_storage(entry.loot_variable_types, sizeof(DataTableRowHandleView)))
+        return BossWeightedEntryKind::normal;
+
+    if (entry.loot_handles.count == 0
+        && entry.items.count == 0
+        && entry.loot_variable_types.count > 0)
+    {
+        const auto* variables = static_cast<const DataTableRowHandleView*>(
+            entry.loot_variable_types.data);
+        bool all_unique{true};
+        for (std::int32_t index = 0; index < entry.loot_variable_types.count; ++index)
+            all_unique = all_unique && is_boss_unique_variable(variables[index]);
+        if (all_unique) return BossWeightedEntryKind::unique;
+    }
+
+    if (entry.loot_handles.count == 1
+        && entry.items.count == 0
+        && entry.loot_variable_types.count == 0)
+    {
+        const auto* handle = static_cast<const DataTableRowHandleView*>(entry.loot_handles.data);
+        if (row_name(*handle) == "ap_enemy_boss") return BossWeightedEntryKind::router;
+    }
+    return BossWeightedEntryKind::normal;
+}
+
+bool entry_contains_boss_unique(const LootEntryView& entry)
+{
+    if (g_boss_unique_force_depth != 0) return true;
+    if (entry.distribution_type == distribution_inventory)
+        return contains_boss_unique_variable(entry.inventory.loot_variable_types);
+    if (entry.distribution_type != distribution_weighted
+        || !valid_array_storage(entry.weighted.entries, sizeof(WeightedDistributionEntryView)))
+        return false;
+    const auto* entries = static_cast<const WeightedDistributionEntryView*>(
+        entry.weighted.entries.data);
+    for (std::int32_t index = 0; index < entry.weighted.entries.count; ++index)
+    {
+        if (classify_boss_weighted_entry(entries[index]) != BossWeightedEntryKind::normal)
+            return true;
+    }
+    return false;
+}
+
+void __fastcall inventory_distribution_hook(
+    CoreResultView* result,
+    void* context,
+    InventoryDistributionConfigView* config,
+    void* source,
+    void* spawner)
+{
+    if (!g_settings.drop_all_boss_uniques
+        || g_boss_context_depth == 0
+        || g_boss_unique_force_depth != 0
+        || !config
+        || !valid_array_storage(config->items, sizeof(InventoryItemCreationParamsView))
+        || !valid_array_storage(config->loot_variable_types, sizeof(DataTableRowHandleView)))
+    {
+        g_inventory_distribution(result, context, config, source, spawner);
+        return;
+    }
+
+    auto* variables = static_cast<DataTableRowHandleView*>(config->loot_variable_types.data);
+    std::vector<DataTableRowHandleView> normal_variables;
+    std::vector<DataTableRowHandleView*> unique_variables;
+    normal_variables.reserve(static_cast<std::size_t>(config->loot_variable_types.count));
+    unique_variables.reserve(static_cast<std::size_t>(config->loot_variable_types.count));
+    for (std::int32_t index = 0; index < config->loot_variable_types.count; ++index)
+    {
+        if (is_boss_unique_variable(variables[index]))
+            unique_variables.push_back(&variables[index]);
+        else
+            normal_variables.push_back(variables[index]);
+    }
+    if (unique_variables.empty())
+    {
+        g_inventory_distribution(result, context, config, source, spawner);
+        return;
+    }
+
+    if (config->items.count > 0 || !normal_variables.empty())
+    {
+        InventoryDistributionConfigView normal{
+            config->items,
+            vector_array(normal_variables),
+        };
+        g_inventory_distribution(result, context, &normal, source, spawner);
+    }
+    for (auto* variable : unique_variables)
+    {
+        ArrayView single{variable, 1, 1};
+        InventoryDistributionConfigView unique{empty_array(), single};
+        BossUniqueForceScope force;
+        g_inventory_distribution(result, context, &unique, source, spawner);
+    }
+    log_boss_diagnostic(
+        "call=" + std::to_string(current_core_call())
+        + " distribution=inventory guaranteed_variables="
+        + std::to_string(unique_variables.size())
+        + " normal_variables=" + std::to_string(normal_variables.size())
+        + " direct_items=" + std::to_string(config->items.count));
+}
+
+void __fastcall uniform_distribution_hook(
+    CoreResultView* result,
+    void* context,
+    UniformDistributionConfigView* config,
+    void* source,
+    void* spawner)
+{
+    if (!g_settings.drop_all_boss_uniques
+        || g_boss_context_depth == 0
+        || g_boss_unique_force_depth == 0
+        || !config
+        || !valid_array_storage(config->loot_entries, sizeof(DataTableRowHandleView))
+        || !valid_array_storage(config->items, sizeof(InventoryItemCreationParamsView)))
+    {
+        g_uniform_distribution(result, context, config, source, spawner);
+        return;
+    }
+
+    auto* handles = static_cast<DataTableRowHandleView*>(config->loot_entries.data);
+    for (std::int32_t index = 0; index < config->loot_entries.count; ++index)
+    {
+        ArrayView single{&handles[index], 1, 1};
+        UniformDistributionConfigView unique{single, empty_array()};
+        g_uniform_distribution(result, context, &unique, source, spawner);
+    }
+    auto* items = static_cast<InventoryItemCreationParamsView*>(config->items.data);
+    for (std::int32_t index = 0; index < config->items.count; ++index)
+    {
+        ArrayView single{&items[index], 1, 1};
+        UniformDistributionConfigView unique{empty_array(), single};
+        g_uniform_distribution(result, context, &unique, source, spawner);
+    }
+    if (config->loot_entries.count == 0 && config->items.count == 0)
+        g_uniform_distribution(result, context, config, source, spawner);
+    log_boss_diagnostic(
+        "call=" + std::to_string(current_core_call())
+        + " distribution=uniform guaranteed_handles="
+        + std::to_string(config->loot_entries.count)
+        + " guaranteed_items=" + std::to_string(config->items.count));
+}
+
+void __fastcall weighted_distribution_hook(
+    CoreResultView* result,
+    void* context,
+    WeightedDistributionConfigView* config,
+    void* source,
+    void* spawner)
+{
+    if (!g_settings.drop_all_boss_uniques
+        || g_boss_context_depth == 0
+        || !config
+        || !valid_array_storage(config->entries, sizeof(WeightedDistributionEntryView)))
+    {
+        g_weighted_distribution(result, context, config, source, spawner);
+        return;
+    }
+
+    auto* entries = static_cast<WeightedDistributionEntryView*>(config->entries.data);
+    if (g_boss_unique_force_depth != 0)
+    {
+        for (std::int32_t index = 0; index < config->entries.count; ++index)
+        {
+            WeightedDistributionConfigView unique{{&entries[index], 1, 1}};
+            g_weighted_distribution(result, context, &unique, source, spawner);
+        }
+        if (config->entries.count == 0)
+            g_weighted_distribution(result, context, config, source, spawner);
+        log_boss_diagnostic(
+            "call=" + std::to_string(current_core_call())
+            + " distribution=weighted mode=expand-all guaranteed_entries="
+            + std::to_string(config->entries.count));
+        return;
+    }
+
+    std::vector<WeightedDistributionEntryView> normal_entries;
+    std::vector<WeightedDistributionEntryView*> unique_entries;
+    std::vector<WeightedDistributionEntryView*> router_entries;
+    normal_entries.reserve(static_cast<std::size_t>(config->entries.count));
+    for (std::int32_t index = 0; index < config->entries.count; ++index)
+    {
+        const auto kind = classify_boss_weighted_entry(entries[index]);
+        if (kind == BossWeightedEntryKind::unique)
+            unique_entries.push_back(&entries[index]);
+        else if (kind == BossWeightedEntryKind::router)
+            router_entries.push_back(&entries[index]);
+        else
+            normal_entries.push_back(entries[index]);
+    }
+    if (unique_entries.empty() && router_entries.empty())
+    {
+        g_weighted_distribution(result, context, config, source, spawner);
+        return;
+    }
+
+    if (!normal_entries.empty())
+    {
+        WeightedDistributionConfigView normal{vector_array(normal_entries)};
+        g_weighted_distribution(result, context, &normal, source, spawner);
+    }
+    for (auto* entry : unique_entries)
+    {
+        WeightedDistributionConfigView unique{{entry, 1, 1}};
+        BossUniqueForceScope force;
+        g_weighted_distribution(result, context, &unique, source, spawner);
+    }
+    for (auto* entry : router_entries)
+    {
+        WeightedDistributionConfigView router{{entry, 1, 1}};
+        g_weighted_distribution(result, context, &router, source, spawner);
+    }
+    log_boss_diagnostic(
+        "call=" + std::to_string(current_core_call())
+        + " distribution=weighted mode=selective normal_entries="
+        + std::to_string(normal_entries.size())
+        + " guaranteed_entries=" + std::to_string(unique_entries.size())
+        + " router_entries=" + std::to_string(router_entries.size()));
+}
+
 void log_echo_roll(
     std::uint64_t call,
     const std::string& item_key,
@@ -616,12 +1196,37 @@ void __fastcall assign_echo_rarity_hook(
     bool rejection_queued{};
     try
     {
-        const std::uint8_t rarity = item->echo_rarity;
+        const std::uint8_t rolled_rarity = item->echo_rarity;
         const ItemIdentity identity = item_identity(item->data);
-        if (rarity < 1 || rarity > 4)
+        if (rolled_rarity < 1 || rolled_rarity > 4)
         {
-            log_echo_roll(call, identity.key, rarity, "keep-fail-open");
+            log_echo_roll(call, identity.key, rolled_rarity, "keep-fail-open");
             return;
+        }
+
+        std::uint8_t rarity = rolled_rarity;
+        const EchoRarityGroup group = echo_rarity_group(identity);
+        if (force_echo_group_epic(group))
+        {
+            if (!writable_range(&item->echo_rarity, sizeof(item->echo_rarity)))
+            {
+                if (call <= diagnostic_echo_limit)
+                    log("Echo rarity override diagnostic call=" + std::to_string(call)
+                        + " item_key=" + identity.key
+                        + " group=" + echo_rarity_group_name(group)
+                        + " decision=keep-original reason=rarity-not-writable");
+            }
+            else
+            {
+                item->echo_rarity = 4;
+                rarity = 4;
+                if (call <= diagnostic_echo_limit)
+                    log("Echo rarity override diagnostic call=" + std::to_string(call)
+                        + " item_key=" + identity.key
+                        + " group=" + echo_rarity_group_name(group)
+                        + " rolled_rarity=" + rarity_name(rolled_rarity)
+                        + " forced_rarity=Epic action=forced");
+            }
         }
 
         const bool allowed = (g_settings.echo_rarity_mask & (1u << rarity)) != 0;
@@ -1033,18 +1638,38 @@ CoreResultView* __fastcall generate_loot_hook(
     std::scoped_lock lock(g_loot_mutex);
     maybe_reload_config();
     const bool outermost = g_active_records.empty();
+    LootSpawnContextView* loot_context = loot_context_from_handle(context);
+    const bool boss_context = g_boss_hooks_active
+        && g_settings.drop_all_boss_uniques
+        && (g_boss_context_depth != 0 || is_boss_context(loot_context));
+    BossContextScope boss_scope(boss_context);
     g_active_records.push_back(record);
     const auto call = g_core_call_count.fetch_add(1) + 1;
+    g_core_call_stack.push_back(call);
+    if (outermost && boss_context)
+    {
+        log_boss_diagnostic(
+            "call=" + std::to_string(call)
+            + " action=boss-context-detected variables="
+            + std::to_string(loot_context->loot_variables.count));
+    }
     auto* entries = static_cast<LootEntryView*>(record->loot.data);
     std::vector<OriginalEntry> originals;
     originals.reserve(static_cast<std::size_t>(record->loot.count));
     std::int32_t changed_count{};
+    std::int32_t boss_guaranteed_count{};
 
     for (std::int32_t index = 0; index < record->loot.count; ++index)
     {
         auto& entry = entries[index];
         originals.push_back({&entry, entry.probability, entry.minimum, entry.maximum});
-        entry.probability = scaled_value(entry.probability, g_settings.core_probability);
+        const bool guarantee = boss_context
+            && entry.probability > 0.0f
+            && entry_contains_boss_unique(entry);
+        entry.probability = guarantee
+            ? boss_guarantee_probability
+            : scaled_value(entry.probability, g_settings.core_probability);
+        if (guarantee) ++boss_guaranteed_count;
         entry.minimum = scaled_value(entry.minimum, g_settings.minimum);
         entry.maximum = scaled_value(entry.maximum, g_settings.maximum);
         if (entry.maximum < entry.minimum) entry.maximum = entry.minimum;
@@ -1062,6 +1687,13 @@ CoreResultView* __fastcall generate_loot_hook(
     CoreResultView* generated = returned ? returned : result;
     if (outermost) filter_core_result(call, generated);
     log_core_result(call, source, generated, record->loot.count, changed_count);
+    if (boss_context && boss_guaranteed_count > 0)
+    {
+        log_boss_diagnostic(
+            "call=" + std::to_string(call)
+            + " action=probability-guarantee entries="
+            + std::to_string(boss_guaranteed_count));
+    }
 
     for (const auto& original : originals)
     {
@@ -1069,8 +1701,116 @@ CoreResultView* __fastcall generate_loot_hook(
         original.entry->minimum = original.minimum;
         original.entry->maximum = original.maximum;
     }
+    g_core_call_stack.pop_back();
     g_active_records.pop_back();
     return returned;
+}
+
+bool install_boss_hooks(HMODULE wayfinder)
+{
+    constexpr unsigned char expected_inventory_prologue[] = {
+        0x48, 0x8b, 0xc4, 0x48, 0x89, 0x58, 0x08, 0x48,
+        0x89, 0x68, 0x18, 0x48, 0x89, 0x70, 0x20, 0x57,
+        0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57,
+    };
+    constexpr unsigned char expected_uniform_prologue[] = {
+        0x4c, 0x89, 0x4c, 0x24, 0x20, 0x4c, 0x89, 0x44,
+        0x24, 0x18, 0x48, 0x89, 0x54, 0x24, 0x10, 0x48,
+        0x89, 0x4c, 0x24, 0x08, 0x55, 0x53, 0x56, 0x57,
+    };
+    constexpr unsigned char expected_weighted_prologue[] = {
+        0x48, 0x8b, 0xc4, 0x55, 0x53, 0x56, 0x57, 0x41,
+        0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48,
+        0x8d, 0xa8, 0x28, 0xf8, 0xff, 0xff, 0x48, 0x81,
+    };
+
+    auto* inventory_target = reinterpret_cast<unsigned char*>(wayfinder)
+        + inventory_distribution_rva;
+    auto* uniform_target = reinterpret_cast<unsigned char*>(wayfinder)
+        + uniform_distribution_rva;
+    auto* weighted_target = reinterpret_cast<unsigned char*>(wayfinder)
+        + weighted_distribution_rva;
+    if (!g_name_to_string
+        || std::memcmp(
+            inventory_target,
+            expected_inventory_prologue,
+            sizeof(expected_inventory_prologue)) != 0
+        || std::memcmp(
+            uniform_target,
+            expected_uniform_prologue,
+            sizeof(expected_uniform_prologue)) != 0
+        || std::memcmp(
+            weighted_target,
+            expected_weighted_prologue,
+            sizeof(expected_weighted_prologue)) != 0)
+    {
+        log("Boss unique drops unavailable: distribution helper signature mismatch");
+        return false;
+    }
+
+    const MH_STATUS create_inventory = MH_CreateHook(
+        inventory_target,
+        reinterpret_cast<void*>(&inventory_distribution_hook),
+        reinterpret_cast<void**>(&g_inventory_distribution));
+    if (create_inventory != MH_OK)
+    {
+        log("Boss unique drops unavailable: inventory hook creation failed status="
+            + std::to_string(create_inventory));
+        return false;
+    }
+    const MH_STATUS create_uniform = MH_CreateHook(
+        uniform_target,
+        reinterpret_cast<void*>(&uniform_distribution_hook),
+        reinterpret_cast<void**>(&g_uniform_distribution));
+    if (create_uniform != MH_OK)
+    {
+        MH_RemoveHook(inventory_target);
+        log("Boss unique drops unavailable: uniform hook creation failed status="
+            + std::to_string(create_uniform));
+        return false;
+    }
+    const MH_STATUS create_weighted = MH_CreateHook(
+        weighted_target,
+        reinterpret_cast<void*>(&weighted_distribution_hook),
+        reinterpret_cast<void**>(&g_weighted_distribution));
+    if (create_weighted != MH_OK)
+    {
+        MH_RemoveHook(inventory_target);
+        MH_RemoveHook(uniform_target);
+        log("Boss unique drops unavailable: weighted hook creation failed status="
+            + std::to_string(create_weighted));
+        return false;
+    }
+
+    const MH_STATUS queue_inventory = MH_QueueEnableHook(inventory_target);
+    const MH_STATUS queue_uniform = MH_QueueEnableHook(uniform_target);
+    const MH_STATUS queue_weighted = MH_QueueEnableHook(weighted_target);
+    const MH_STATUS apply = queue_inventory == MH_OK
+        && queue_uniform == MH_OK
+        && queue_weighted == MH_OK
+        ? MH_ApplyQueued()
+        : MH_UNKNOWN;
+    if (queue_inventory != MH_OK
+        || queue_uniform != MH_OK
+        || queue_weighted != MH_OK
+        || apply != MH_OK)
+    {
+        MH_QueueDisableHook(inventory_target);
+        MH_QueueDisableHook(uniform_target);
+        MH_QueueDisableHook(weighted_target);
+        MH_ApplyQueued();
+        MH_RemoveHook(inventory_target);
+        MH_RemoveHook(uniform_target);
+        MH_RemoveHook(weighted_target);
+        log("Boss unique drops unavailable: distribution hook enable failed");
+        return false;
+    }
+
+    g_boss_hooks_active = true;
+    log("Boss unique drops active inventory=Wayfinder+0x1B0D5D0"
+        " uniform=Wayfinder+0x1B0DCD0 weighted=Wayfinder+0x1B0E5D0"
+        " mode=game-array-helpers-fail-open");
+    return true;
 }
 
 bool install_echo_hooks(HMODULE wayfinder)
@@ -1248,6 +1988,7 @@ bool install_hooks()
         return false;
     }
     log("Native scaler active core=Wayfinder+0x1B12B40 result=Wayfinder+0x1B09200");
+    install_boss_hooks(wayfinder);
     install_echo_hooks(wayfinder);
     return true;
 }
@@ -1267,7 +2008,7 @@ protected:
     std::vector<std::shared_ptr<void>> GUITabs{};
 public:
     std::wstring ModName{L"MoreDropsNative"};
-    std::wstring ModVersion{L"0.10.0"};
+    std::wstring ModVersion{L"0.12.0"};
     std::wstring ModDescription{L"Scales Wayfinder loot probabilities and amounts."};
     std::wstring ModAuthors{L"Local companion implementation"};
     std::wstring ModIntendedSDKVersion{L"3.0.1"};

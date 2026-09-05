@@ -23,6 +23,11 @@
 - **Echo rarity allow-list** - The configured rarities that MoreDrops permits Wayfinder to append during a central loot spawn.
 - **Accessory rarity allow-list** - The configured rarities that MoreDrops keeps for selected accessory and relic equipment. Recipe rows bypass this filter.
 - **Fail open** - Keep an item when the mod cannot verify the item type or rarity.
+- **Boss unique pool** - A boss-source variable that contains boss-specific equipment, cosmetics, resources, pets, titles, or Echoes.
+- **Boss unique guarantee** - Expansion of each eligible boss-specific pool before authoritative item and rarity filters run.
+- **Echo rarity override** - A resource-backed setting that changes an exact boss, world-boss, elite, or miniboss Echo row to Epic before the Echo rarity allow-list runs.
+- **World boss** - A current overland miniboss source such as Ancient One, Bone Crusher, or Howler.
+- **Rare enemy** - A Wayfinder resource asset classified as an elite or miniboss, excluding overland world bosses kept in their separate group.
 - **Config hot reload** - Applying a saved MoreDrops configuration before a later loot call without restarting Wayfinder.
 - **Startup warning page** - A UMG page that Wayfinder shows for epilepsy or autosave information before the main menu.
 - **In-game autosave indicator** - The gameplay overlay that shows when Wayfinder writes save data.

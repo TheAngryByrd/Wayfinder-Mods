@@ -3,8 +3,11 @@
 MoreDrops changes loot records before Wayfinder generates loot. The mod has
 independent core probability, final probability, minimum amount, and maximum
 amount multipliers. Post-roll rules can block selected item stacks. Version
-0.10.0 rejects disallowed accessory and relic rarities in the item manifest.
-It rejects disallowed Echo rarities before inventory entries are appended.
+0.12.0 can expand eligible boss-specific unique pools. It rejects disallowed
+accessory and relic rarities in the item manifest. It rejects disallowed Echo
+rarities before inventory entries are appended. Resource-backed settings can
+change boss, world-boss, elite, and miniboss Echoes to Epic before the Echo
+filter runs.
 
 ```mermaid
 flowchart LR
@@ -28,6 +31,12 @@ flowchart LR
     EchoRoll --> EchoReject[Normal pre-append rejection]
     Config --> AccessorySetting[Accessory rarity allow-list]
     AccessorySetting --> ItemFilter
+    Config --> BossSetting[Boss unique guarantee]
+    BossSetting --> BossContext[Boss context check]
+    BossContext --> Distribution[Game distribution helpers]
+    Distribution --> Result
+    Config --> EchoOverride[Source-group Echo overrides]
+    EchoOverride --> EchoRoll
     Lua[MoreDrops Lua] --> Disabled[Catalog scan disabled]
     Lua --> Trace[Gameplay-stage traces]
 ```
@@ -56,6 +65,21 @@ flowchart LR
   `AccessoryInventoryItems`.
 - Accessory recipe rows bypass the accessory filter.
 - An unknown accessory or relic row fails open.
+- `DropAllUniques` defaults to `false`.
+- `Bosses`, `WorldBosses`, and `RareEnemies` Echo overrides default to
+  `Original` and also accept `Epic`.
+- The boss rule recognizes all 50 current boss-chest contexts through their
+  `CreatureEcho` and `CosmeticSet` variables.
+- The boss rule expands only eligible boss-specific unique pools.
+- Shared currency, spectra, gloomstone, summoning stones, and quest items keep
+  their normal behavior.
+- Echo override groups use exact `CreatureEchoItems` rows extracted from
+  Wayfinder resources.
+- The rare-enemy group covers all current elite and miniboss assets, except
+  overland world bosses kept in their separate group.
+- The Echo rarity allow-list checks the forced Epic result.
+- Item probability and rarity filters remain authoritative after expansion.
+- A distribution helper signature mismatch disables only the boss rule.
 - MoreDrops checks `config.ini` before valid loot calls, but no more than once per second.
 - A successful reload applies one complete settings object before scaling and filtering.
 - A missing or unreadable configuration leaves the active settings unchanged.
@@ -89,14 +113,24 @@ AllowedRarities=All
 
 [AccessoryFilter]
 AllowedRarities=Epic
+
+[BossDrops]
+DropAllUniques=false
+
+[EchoRarityOverride]
+Bosses=Original
+WorldBosses=Original
+RareEnemies=Original
 ```
 
 A successful runtime update has this form:
 
 ```text
-[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active accessory_rarities=Epic path=...
+[MoreDropsNative] Config reloaded core_probability=2.00 final_probability=1.00 minimum=1.00 maximum=1.00 item_probability_rules=1 echo_rarities_requested=All echo_filter=active accessory_rarities=Epic boss_drop_all_uniques=false echo_override_bosses=Original echo_override_world_bosses=Original echo_override_rare_enemies=Original boss_drop_hooks=active path=...
 ```
 
 Related: [Drop scaling](drop-scaling.md), [Item filtering](item-filtering.md),
-[Item catalog](item-catalog.md), [Runtime reflection](../runtime/reflection.md), and
+[Boss unique drops](boss-unique-drops.md),
+[Echo rarity overrides](echo-rarity-overrides.md), [Item catalog](item-catalog.md),
+[Runtime reflection](../runtime/reflection.md), and
 [Build system](../distribution/build-system.md).

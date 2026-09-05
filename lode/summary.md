@@ -6,7 +6,11 @@ scales loot probability and amount ranges through Wayfinder's central loot
 spawner. MoreDrops also filters configured selected items, disallowed Echo
 rarities, and disallowed accessory or relic rarities. Echo rejection uses
 Wayfinder's normal temporary-item exit before an inventory entry is appended.
-Accessory and relic filtering uses the selected-item manifest. The root README
+Accessory and relic filtering uses the selected-item manifest. An optional
+boss rule expands eligible boss-specific unique pools through Wayfinder's
+normal distribution helpers. Three resource-backed options can change boss,
+world-boss, elite, and miniboss Echoes to Epic before the Echo rarity filter.
+The root README
 lists available mods and shared
 contributor instructions. SkipStartupWarnings closes the epilepsy and autosave
 warning pages. It leaves the title prompt and later menus unchanged. Each mod
@@ -36,6 +40,10 @@ flowchart LR
     EchoSetting --> EchoReject[Pre-append Echo rejection]
     DropsConfig --> AccessorySetting[Accessory rarity allow-list]
     AccessorySetting --> ItemFilter
+    DropsConfig --> BossSetting[Boss unique guarantee]
+    BossSetting --> Spawner
+    DropsConfig --> EchoOverride[Source-group Echo overrides]
+    EchoOverride --> EchoReject
     ItemFilter --> ItemLog[Item diagnostic keys]
     LootLua --> Trace[Loot-stage diagnostics]
     StartupConfig --> WarningHooks[Startup warning hooks]
@@ -63,6 +71,12 @@ flowchart LR
 - MoreDrops applies the accessory rarity allow-list to accessory and relic loot.
 - Accessory recipe rows bypass the rarity filter.
 - An unknown accessory or relic row fails open and stays in the loot result.
+- MoreDrops can guarantee eligible items from each boss-specific unique pool.
+- MoreDrops can change exact boss, world-boss, elite, and miniboss Echo rows
+  to Epic.
+- The Echo rarity filter remains authoritative after an Echo rarity override.
+- Shared generic loot keeps its normal distribution behavior.
+- Existing item and rarity filters remain authoritative after boss expansion.
 - MoreDrops does not move or destroy generated inventory entries.
 - MoreDrops does not run the unsafe Lua item-catalog scan.
 - Item diagnostics provide keys for observed loot items.
@@ -105,6 +119,14 @@ AllowedRarities=All
 
 [AccessoryFilter]
 AllowedRarities=Epic
+
+[BossDrops]
+DropAllUniques=false
+
+[EchoRarityOverride]
+Bosses=Original
+WorldBosses=Original
+RareEnemies=Original
 ```
 
 MoreDrops confirms an accepted runtime configuration with this log prefix:
@@ -122,4 +144,5 @@ SkipAutoSaveWarning=1
 
 Related: [Session capacity](runtime/session-capacity.md), [Drop scaling](loot/drop-scaling.md),
 [Item filtering](loot/item-filtering.md), [Item catalog](loot/item-catalog.md),
+[Echo rarity overrides](loot/echo-rarity-overrides.md),
 [Startup warning skip](startup/summary.md), and [Distribution](distribution/summary.md).
