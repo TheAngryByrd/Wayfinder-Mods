@@ -28,6 +28,52 @@
     "includeWayfinderSignature": {
       "type": "boolean"
     },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "script"
+      ],
+      "properties": {
+        "script": {
+          "type": "string",
+          "pattern": "^[^\\\\/].*\\.ps1$"
+        }
+      }
+    },
+    "umg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "pakName",
+        "assetRoot",
+        "requiredAssets"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "pattern": "^[^\\\\/].*\\.uproject$"
+        },
+        "pakName": {
+          "type": "string",
+          "pattern": "^[^\\\\/]+\\.pak$"
+        },
+        "assetRoot": {
+          "type": "string",
+          "pattern": "^/Game/Mods/[A-Za-z][A-Za-z0-9_/-]*$"
+        },
+        "requiredAssets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\\\/].*\\.uasset$"
+          }
+        }
+      }
+    },
     "native": {
       "type": "object",
       "additionalProperties": false,

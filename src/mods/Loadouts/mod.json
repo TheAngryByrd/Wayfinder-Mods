@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../schemas/mod.schema.json",
+  "id": "Loadouts",
+  "displayName": "Wayfinder Loadouts",
+  "archiveName": "Wayfinder-Loadouts-NexusMods.zip",
+  "includeWayfinderSignature": true,
+  "validation": {
+    "script": "validate.ps1"
+  },
+  "native": {
+    "target": "LoadoutsEventRelay"
+  },
+  "umg": {
+    "project": "umg/Atlas.uproject",
+    "pakName": "Loadouts.pak",
+    "assetRoot": "/Game/Mods/Loadouts",
+    "requiredAssets": [
+      "ModActor.uasset",
+      "UI/WBP_LoadoutsPage.uasset",
+      "UI/WBP_LoadoutProfileRow.uasset",
+      "UI/WBP_LoadoutNameDialog.uasset"
+    ]
+  }
+}

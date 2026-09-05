@@ -29,6 +29,15 @@
 - **World boss** - A current overland miniboss source such as Ancient One, Bone Crusher, or Howler.
 - **Rare enemy** - A Wayfinder resource asset classified as an elite or miniboss, excluding overland world bosses kept in their separate group.
 - **Config hot reload** - Applying a saved MoreDrops configuration before a later loot call without restarting Wayfinder.
+- **Loadout profile** - A named Loadouts record for one saved character configuration.
+- **Missing part** - A saved item or style that is unavailable when Loadouts validates a profile.
+- **Partial application** - Applying available profile parts after the user confirms that Loadouts can skip missing parts.
+- **Trust flag** - A schema version 3 value that proves one reset-sensitive profile section came from a complete capture.
+- **Reset unit** - The smallest holder, talent pool, style set, or tree that Loadouts can safely clear and rebuild.
+- **Pending confirmation** - One resolved Loadouts warning that must be confirmed or canceled before another application starts.
+- **GUID word** - One 32-bit GUID segment, reflected as signed and stored by Loadouts as canonical unsigned data.
+- **UMG asset pack** - Cooked Loadouts interface assets stored in `Loadouts.pak`.
+- **Logic mod** - A cooked Blueprint Pak that UE4SS loads from `Atlas/Content/Paks/LogicMods`.
 - **Startup warning page** - A UMG page that Wayfinder shows for epilepsy or autosave information before the main menu.
 - **In-game autosave indicator** - The gameplay overlay that shows when Wayfinder writes save data.
 

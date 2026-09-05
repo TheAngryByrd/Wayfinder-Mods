@@ -8,6 +8,10 @@ param(
 
     [switch] $SkipNativeBuild,
 
+    [switch] $SkipUmgBuild,
+
+    [string] $UnrealRoot = '',
+
     [switch] $NoArchive,
 
     [switch] $ListMods
@@ -50,7 +54,9 @@ $sharedSignature = Join-Path $repositoryDirectory 'src\shared\UE4SS_Signatures\G
 $nexusDirectory = Join-Path $repositoryDirectory 'dist\NexusMods'
 $archiveDirectory = Join-Path $repositoryDirectory 'dist'
 $nativeBuildRoot = Join-Path $repositoryDirectory 'build\native'
+$umgBuildRoot = Join-Path $repositoryDirectory 'build\umg'
 $nativeBuildScript = Join-Path $repositoryDirectory 'scripts\build-native.ps1'
+$umgBuildScript = Join-Path $repositoryDirectory 'scripts\build-umg.ps1'
 
 if (-not (Test-Path -LiteralPath $modsDirectory)) {
     throw "The mod source directory was not found: $modsDirectory"
@@ -71,7 +77,7 @@ foreach ($modDirectory in $modDirectories) {
         throw "The mod manifest is not valid JSON: $manifestPath`n$($_.Exception.Message)"
     }
 
-    $allowedManifestProperties = @('$schema', 'id', 'displayName', 'archiveName', 'includeWayfinderSignature', 'native')
+    $allowedManifestProperties = @('$schema', 'id', 'displayName', 'archiveName', 'includeWayfinderSignature', 'validation', 'native', 'umg')
     $unknownManifestProperties = @($manifest.PSObject.Properties.Name | Where-Object { $_ -notin $allowedManifestProperties })
     if ($unknownManifestProperties.Count -gt 0) {
         throw "The manifest contains unsupported properties: $(($unknownManifestProperties | Sort-Object) -join ', ')"
@@ -96,6 +102,22 @@ foreach ($modDirectory in $modDirectories) {
         throw "The manifest requires a Boolean property 'includeWayfinderSignature': $manifestPath"
     }
 
+    $validationScript = $null
+    $validationProperty = $manifest.PSObject.Properties['validation']
+    if ($null -ne $validationProperty -and $null -ne $validationProperty.Value) {
+        $unknownValidationProperties = @($validationProperty.Value.PSObject.Properties.Name | Where-Object { $_ -ne 'script' })
+        if ($unknownValidationProperties.Count -gt 0) {
+            throw "The validation manifest contains unsupported properties: $(($unknownValidationProperties | Sort-Object) -join ', ')"
+        }
+        $validationScriptRelative = Get-RequiredString -Data $validationProperty.Value -Name 'script' -ManifestPath $manifestPath
+        if ([System.IO.Path]::IsPathRooted($validationScriptRelative) -or $validationScriptRelative.Contains('..') -or
+            -not $validationScriptRelative.EndsWith('.ps1', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "The validation script must be a relative .ps1 path: $validationScriptRelative"
+        }
+        $validationScript = Join-Path $modDirectory.FullName $validationScriptRelative
+        Assert-ChildPath -Path $validationScript -Parent $modDirectory.FullName -Label 'Validation script'
+    }
+
     $nativeTarget = $null
     $nativeProperty = $manifest.PSObject.Properties['native']
     if ($null -ne $nativeProperty -and $null -ne $nativeProperty.Value) {
@@ -109,12 +131,63 @@ foreach ($modDirectory in $modDirectories) {
         }
     }
 
+    $umgProject = $null
+    $umgPakName = $null
+    $umgAssetRoot = $null
+    $umgRequiredAssets = @()
+    $umgProperty = $manifest.PSObject.Properties['umg']
+    if ($null -ne $umgProperty -and $null -ne $umgProperty.Value) {
+        $allowedUmgProperties = @('project', 'pakName', 'assetRoot', 'requiredAssets')
+        $unknownUmgProperties = @($umgProperty.Value.PSObject.Properties.Name | Where-Object { $_ -notin $allowedUmgProperties })
+        if ($unknownUmgProperties.Count -gt 0) {
+            throw "The UMG manifest contains unsupported properties: $(($unknownUmgProperties | Sort-Object) -join ', ')"
+        }
+
+        $umgProjectRelative = Get-RequiredString -Data $umgProperty.Value -Name 'project' -ManifestPath $manifestPath
+        if ([System.IO.Path]::IsPathRooted($umgProjectRelative) -or $umgProjectRelative.Contains('..') -or -not $umgProjectRelative.EndsWith('.uproject', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "The UMG project must be a relative .uproject path: $umgProjectRelative"
+        }
+        $umgProject = Join-Path $modDirectory.FullName $umgProjectRelative
+        Assert-ChildPath -Path $umgProject -Parent $modDirectory.FullName -Label 'UMG project'
+
+        $umgPakName = Get-RequiredString -Data $umgProperty.Value -Name 'pakName' -ManifestPath $manifestPath
+        if ([System.IO.Path]::GetFileName($umgPakName) -ne $umgPakName -or -not $umgPakName.EndsWith('.pak', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "The UMG pakName must be a Pak file name without a directory: $umgPakName"
+        }
+
+        $umgAssetRoot = Get-RequiredString -Data $umgProperty.Value -Name 'assetRoot' -ManifestPath $manifestPath
+        if ($umgAssetRoot -notmatch '^/Game/Mods/[A-Za-z][A-Za-z0-9_/-]*$' -or $umgAssetRoot.Contains('..')) {
+            throw "The UMG assetRoot must be below /Game/Mods: $umgAssetRoot"
+        }
+
+        $requiredAssetsProperty = $umgProperty.Value.PSObject.Properties['requiredAssets']
+        if ($null -eq $requiredAssetsProperty -or $requiredAssetsProperty.Value -is [string]) {
+            throw "The UMG manifest requires an array property 'requiredAssets': $manifestPath"
+        }
+        $umgRequiredAssets = @($requiredAssetsProperty.Value)
+        if ($umgRequiredAssets.Count -eq 0) {
+            throw "The UMG requiredAssets array cannot be empty: $manifestPath"
+        }
+        foreach ($requiredAsset in $umgRequiredAssets) {
+            if ($requiredAsset -isnot [string] -or [string]::IsNullOrWhiteSpace($requiredAsset) -or
+                [System.IO.Path]::IsPathRooted($requiredAsset) -or $requiredAsset.Contains('..') -or
+                -not $requiredAsset.EndsWith('.uasset', [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "The UMG requiredAssets array contains an invalid path: $requiredAsset"
+            }
+        }
+    }
+
     $definitions.Add([pscustomobject]@{
         Id = $id
         DisplayName = $displayName
         ArchiveName = $archiveName
         IncludeWayfinderSignature = $signatureProperty.Value
+        ValidationScript = $validationScript
         NativeTarget = $nativeTarget
+        UmgProject = $umgProject
+        UmgPakName = $umgPakName
+        UmgAssetRoot = $umgAssetRoot
+        UmgRequiredAssets = $umgRequiredAssets
         SourceDirectory = $modDirectory.FullName
         ContentDirectory = Join-Path $modDirectory.FullName 'content'
         NativeDirectory = Join-Path $modDirectory.FullName 'native'
@@ -137,7 +210,7 @@ if ($duplicateArchives.Count -gt 0) {
 }
 
 if ($ListMods) {
-    $definitions | Select-Object Id, DisplayName, ArchiveName, NativeTarget | Format-Table -AutoSize
+    $definitions | Select-Object Id, DisplayName, ArchiveName, NativeTarget, UmgPakName | Format-Table -AutoSize
     return
 }
 
@@ -176,6 +249,15 @@ foreach ($definition in $selectedDefinitions) {
     if (-not (Test-Path -LiteralPath $definition.SourceReadme)) {
         throw "The mod README was not found: $($definition.SourceReadme)"
     }
+    if ($null -ne $definition.ValidationScript) {
+        if (-not (Test-Path -LiteralPath $definition.ValidationScript)) {
+            throw "The mod validation script was not found: $($definition.ValidationScript)"
+        }
+        & $definition.ValidationScript `
+            -Phase Source `
+            -RepositoryDirectory $repositoryDirectory `
+            -ModDirectory $definition.SourceDirectory
+    }
 
     $nativeDll = $null
     if ($null -ne $definition.NativeTarget) {
@@ -194,6 +276,47 @@ foreach ($definition in $selectedDefinitions) {
         }
         if (-not (Test-Path -LiteralPath $nativeDll)) {
             throw "The compiled DLL was not found: $nativeDll"
+        }
+    }
+
+    $umgPak = $null
+    if ($null -ne $definition.UmgPakName) {
+        if (-not (Test-Path -LiteralPath $definition.UmgProject)) {
+            throw "The UMG project was not found: $($definition.UmgProject)"
+        }
+        if (-not (Test-Path -LiteralPath $umgBuildScript)) {
+            throw "The UMG build script was not found: $umgBuildScript"
+        }
+
+        $umgBuildDirectory = Join-Path $umgBuildRoot $definition.Id
+        $umgPak = Join-Path $umgBuildDirectory "pak\$($definition.UmgPakName)"
+        if (-not $SkipUmgBuild) {
+            $umgArguments = @{
+                ProjectPath = $definition.UmgProject
+                BuildDirectory = $umgBuildDirectory
+                PakName = $definition.UmgPakName
+                AssetRoot = $definition.UmgAssetRoot
+                RequiredAssets = $definition.UmgRequiredAssets
+            }
+            if (-not [string]::IsNullOrWhiteSpace($UnrealRoot)) {
+                $umgArguments.UnrealRoot = $UnrealRoot
+            }
+            & $umgBuildScript @umgArguments | Out-Null
+        }
+        if (-not (Test-Path -LiteralPath $umgPak)) {
+            throw "The cooked UMG Pak was not found: $umgPak"
+        }
+        $umgHashPath = "$umgPak.sha256"
+        if (-not (Test-Path -LiteralPath $umgHashPath)) {
+            throw "The verified UMG Pak hash was not found: $umgHashPath"
+        }
+        $expectedUmgHash = (Get-Content -LiteralPath $umgHashPath -Raw).Trim()
+        if ($expectedUmgHash -notmatch '^[A-Fa-f0-9]{64}$') {
+            throw "The verified UMG Pak hash is invalid: $umgHashPath"
+        }
+        $actualUmgHash = (Get-FileHash -LiteralPath $umgPak -Algorithm SHA256).Hash
+        if (-not $actualUmgHash.Equals($expectedUmgHash, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "The UMG Pak does not match its verified hash: $umgPak"
         }
     }
 
@@ -225,7 +348,21 @@ foreach ($definition in $selectedDefinitions) {
         Copy-Item -LiteralPath $sharedSignature -Destination $signatureOutputDirectory -Force
     }
 
+    if ($null -ne $umgPak) {
+        $logicModsDirectory = Join-Path $distributionDirectory 'Atlas\Content\Paks\LogicMods'
+        New-Item -ItemType Directory -Path $logicModsDirectory -Force | Out-Null
+        Copy-Item -LiteralPath $umgPak -Destination (Join-Path $logicModsDirectory $definition.UmgPakName) -Force
+    }
+
     Copy-Item -LiteralPath $definition.SourceReadme -Destination (Join-Path $distributionDirectory 'README.md') -Force
+
+    if ($null -ne $definition.ValidationScript) {
+        & $definition.ValidationScript `
+            -Phase Package `
+            -RepositoryDirectory $repositoryDirectory `
+            -ModDirectory $definition.SourceDirectory `
+            -DistributionDirectory $distributionDirectory
+    }
 
     $archivePath = Join-Path $archiveDirectory $definition.ArchiveName
     Assert-ChildPath -Path $archivePath -Parent $archiveDirectory -Label 'Archive path'
@@ -244,6 +381,10 @@ foreach ($definition in $selectedDefinitions) {
     if ($null -ne $nativeDll) {
         $hash = Get-FileHash -LiteralPath (Join-Path $modOutputDirectory 'dlls\main.dll') -Algorithm SHA256
         Write-Host "Packaged DLL SHA-256: $($hash.Hash)"
+    }
+    if ($null -ne $umgPak) {
+        $umgHash = Get-FileHash -LiteralPath (Join-Path $distributionDirectory "Atlas\Content\Paks\LogicMods\$($definition.UmgPakName)") -Algorithm SHA256
+        Write-Host "Packaged UMG Pak SHA-256: $($umgHash.Hash)"
     }
     if (-not $NoArchive) {
         Write-Host "Nexus Mods archive: $archivePath"

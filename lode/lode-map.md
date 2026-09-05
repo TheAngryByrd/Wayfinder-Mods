@@ -9,6 +9,8 @@ flowchart TD
     Map --> Terms[terminology.md]
     Map --> Practices[practices.md]
     Map --> Plans[plans/roadmap.md]
+    Plans --> LoadoutsPlan[plans/loadouts.md]
+    Plans --> LoadoutsUIPlan[plans/loadouts-umg-pak.md]
     Map --> Runtime[runtime/summary.md]
     Runtime --> Session[runtime/session-capacity.md]
     Runtime --> UI[runtime/party-ui.md]
@@ -22,6 +24,9 @@ flowchart TD
     Loot --> ItemCatalog[loot/item-catalog.md]
     Loot --> BossUniques[loot/boss-unique-drops.md]
     Loot --> EchoOverrides[loot/echo-rarity-overrides.md]
+    Map --> Loadouts[loadouts/summary.md]
+    Loadouts --> LoadoutsService[loadouts/service.md]
+    Loadouts --> LoadoutsUI[loadouts/ui.md]
     Map --> Distribution[distribution/summary.md]
     Distribution --> BuildSystem[distribution/build-system.md]
     Distribution --> ModIo[distribution/mod-io.md]
@@ -33,6 +38,8 @@ flowchart TD
 - [Terminology](terminology.md)
 - [Project practices](practices.md)
 - [Current roadmap](plans/roadmap.md)
+- [Loadouts validation plan](plans/loadouts.md)
+- [Loadouts UMG and Pak plan](plans/loadouts-umg-pak.md)
 
 ## Runtime
 
@@ -61,6 +68,14 @@ flowchart TD
 - [Item catalog](loot/item-catalog.md)
 - [Boss unique drops](loot/boss-unique-drops.md)
 - [Echo rarity overrides](loot/echo-rarity-overrides.md)
+
+## Loadouts
+
+- [Loadouts summary](loadouts/summary.md)
+- [Loadouts service](loadouts/service.md)
+- [Loadouts interface](loadouts/ui.md)
+- [Loadouts validation plan](plans/loadouts.md)
+- [Loadouts UMG and Pak plan](plans/loadouts-umg-pak.md)
 
 ## Path example
 

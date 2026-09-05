@@ -9,6 +9,7 @@ flowchart LR
     Shared[src/shared] --> Build
     Build --> MorePlayers[dist/NexusMods/MorePlayers]
     Build --> Additional[dist/NexusMods/AnotherMod]
+    Build --> LoadoutsPak[Loadouts.pak]
     MorePlayers --> Zip[Wayfinder-MorePlayers-NexusMods.zip]
 ```
 
@@ -16,6 +17,7 @@ flowchart LR
 
 - Each `src/mods/<ModName>` directory contains `mod.json` and `content`.
 - Each mod can contain an optional `native` CMake project.
+- Each mod can contain an optional Unreal Engine 4.27 UMG project.
 - Each mod has a `README.md` file for source and package documentation.
 - `build.ps1` builds all mods when `-Mod` is absent.
 - `build.ps1 -Mod <ModName>` builds only the selected mod.
@@ -46,6 +48,7 @@ dist/Wayfinder-MorePlayers-NexusMods.zip
 ```
 
 Use `-SkipNativeBuild` to reuse the current DLL.
+Use `-SkipUmgBuild` to reuse the current verified Pak.
 Use `-NoArchive` to generate only the unpacked directory.
 
 The current native package requires manual installation.

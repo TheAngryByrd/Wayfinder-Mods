@@ -9,6 +9,7 @@ Select a mod to see its installation, configuration, build, and troubleshooting 
 - [Mods](#mods)
   - [MorePlayers](#moreplayers)
   - [MoreDrops](#moredrops)
+  - [Loadouts](#loadouts)
   - [SkipStartupWarnings](#skipstartupwarnings)
 - [Add another mod](#add-another-mod)
 - [Build](#build)
@@ -36,6 +37,17 @@ independent multiplier, so users can change probability and amount ranges
 separately.
 
 See the [MoreDrops documentation](src/mods/MoreDrops/README.md).
+
+### Loadouts
+
+> [!WARNING]
+> **WIP:** Loadouts does not currently work. Do not install or use this mod.
+> Saving a loadout can crash Wayfinder.
+
+The Loadouts design stores named style, armor, weapon, Echo, talent, and
+ability configurations. It is intended to validate saved parts before application.
+
+See the [Loadouts documentation](src/mods/Loadouts/README.md).
 
 ### SkipStartupWarnings
 
@@ -67,9 +79,10 @@ For each selected mod, the script:
 1. Validates manifest values and unique package names.
 2. Updates the root, mod, and native README tables of contents.
 3. Compiles the optional native CMake target.
-4. Recreates the mod's unpacked package directory.
-5. Copies the mod content, native DLL, shared signature, and mod README.
-6. Creates the ZIP archive unless `-NoArchive` is set.
+4. Cooks and verifies an optional UMG Pak.
+5. Recreates the mod's unpacked package directory.
+6. Copies the content, compiled files, shared signature, and mod README.
+7. Creates the ZIP archive unless `-NoArchive` is set.
 
 Native output uses `build\native\<ModName>\<Configuration>`.
 Unpacked packages use `dist\NexusMods\<ModName>`.
@@ -106,11 +119,15 @@ List discovered mods without building them:
 | `-Mod <Name>` | Builds only the selected mod. Supply a comma-separated list for multiple mods. |
 | `-Configuration <Name>` | Selects `Debug`, `Release`, `RelWithDebInfo`, or `MinSizeRel`. The default is `Release`. |
 | `-SkipNativeBuild` | Reuses an existing native DLL from the selected configuration. |
+| `-SkipUmgBuild` | Reuses an existing UMG Pak from `build\umg\<ModName>\pak`. |
+| `-UnrealRoot <Path>` | Supplies the Unreal Engine 4.27 installation for a UMG build. |
 | `-NoArchive` | Creates the unpacked package without creating its ZIP archive. |
 | `-ListMods` | Lists discovered manifests without building packages. |
 
 Native builds require Visual Studio 2022 with Desktop development with C++.
 They also require CMake 3.22 or newer.
+UMG builds require Unreal Engine 4.27. You can set `WAYFINDER_UE427_ROOT`
+instead of using `-UnrealRoot`.
 
 ## Project layout
 
@@ -120,16 +137,22 @@ README.md                              Mod catalog and shared contributor guide
 build.ps1                              Manifest-based package builder
 schemas\mod.schema.json                Mod manifest schema
 scripts\build-native.ps1               Shared CMake build tool
+scripts\build-umg.ps1                  Shared Unreal cook and Pak build tool
 scripts\update-toc.ps1                 Markdown TOC generator
 src\mods\<ModName>\mod.json            Package definition
 src\mods\<ModName>\README.md           Complete mod documentation
 src\mods\<ModName>\content             Files installed in the UE4SS mod directory
 src\mods\<ModName>\native              Optional C++ source
+src\mods\<ModName>\umg                 Optional Unreal Engine 4.27 project
+src\mods\<ModName>\validate.ps1        Optional offline source and package validation
 src\shared\UE4SS_Signatures             Shared Wayfinder UE4SS signature
+tools\lua\5.4.4                         Vendored Lua 5.4.4 syntax tool source
 tools\recon\WayfinderDump               Reusable reflection diagnostic
 lode                                   Persistent project knowledge
 lode\tmp                               Ignored session handoffs and temporary notes
 build\native\<ModName>                  Generated native build files
+build\tools                              Generated offline validation tools
+build\umg\<ModName>                     Generated UMG cook and Pak files
 dist\NexusMods\<ModName>                Generated package directory
 dist\<ArchiveName>.zip                  Generated package archive
 ```

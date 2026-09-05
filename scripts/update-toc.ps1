@@ -46,6 +46,7 @@ foreach ($markdownPath in $Path) {
         $resolvedPath,
         [System.Text.UTF8Encoding]::new($false, $true)
     )
+    $lineEnding = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
     $startMarker = '<!-- toc:start -->'
     $endMarker = '<!-- toc:end -->'
     $startIndex = $content.IndexOf($startMarker, [System.StringComparison]::Ordinal)
@@ -79,7 +80,7 @@ foreach ($markdownPath in $Path) {
 
     $before = $content.Substring(0, $startIndex + $startMarker.Length)
     $after = $content.Substring($endIndex)
-    $updated = $before + "`r`n" + ($entries -join "`r`n") + "`r`n" + $after
+    $updated = $before + $lineEnding + ($entries -join $lineEnding) + $lineEnding + $after
     [System.IO.File]::WriteAllText($resolvedPath, $updated, [System.Text.UTF8Encoding]::new($false))
     Write-Host "Updated table of contents: $resolvedPath"
 }
