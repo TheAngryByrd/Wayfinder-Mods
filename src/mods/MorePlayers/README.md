@@ -127,7 +127,14 @@ Confirm that the file contains messages similar to these:
 [MorePlayers] Config MaxPlayers=25
 [MorePlayers] Mod loaded
 [MorePlayers] Online party maximum phase=created group_size=3.0->25.0
+[MorePlayers] Party invite controls hook ready
 [MorePlayers] Engine limits: players=25 party=25
+```
+
+When you open the party page in the pause menu, `UE4SS.log` records one line:
+
+```text
+[MorePlayers] Party invite controls first call players=1 (number) host=true (boolean) probe=shown
 ```
 
 Open this file:
@@ -141,6 +148,9 @@ Confirm that the file contains these startup messages:
 ```text
 [MorePlayersSteamLimit] Native companion starting
 [MorePlayersSteamLimit] Config MaxPlayers=25
+[MorePlayersSteamLimit] Session capacity patch applied at 4 sites
+[MorePlayersSteamLimit] Full-party threshold patch applied at 2 sites
+[MorePlayersSteamLimit] Full-party hook not installed: the full-party threshold is the configured limit
 [MorePlayersSteamLimit] Unreal initialization complete; EOS readiness checks delayed 5000 ms
 [MorePlayersSteamLimit] EOS hooks installed; configured capacity overrides enabled
 ```
@@ -149,25 +159,41 @@ Host a public or invite-only game. Confirm that the native log contains these
 session messages:
 
 ```text
-[MorePlayersSteamLimit] EOS advertised NumPublicConnections 3 -> 25
-[MorePlayersSteamLimit] SetLobbyMemberLimit 3 -> 25 lobby=...
+[MorePlayersSteamLimit] EOS advertised NumPublicConnections 25 -> 25
+[MorePlayersSteamLimit] SetLobbyMemberLimit 25 -> 25 lobby=...
 [MorePlayersSteamLimit] SetLobbyMemberLimit result=1
 ```
 
+The first value is the limit that Wayfinder submits. The second value is the
+limit that the mod sends. Both values are equal when the session capacity
+patch is active.
+
 `UE4SS.log` should also contain `session-settings-publication` or
 `party-update-publication` with `max_group_size=25`. This confirms that the
-host changed Wayfinder's own online-party maximum before publication.
+session publication hooks run. Wayfinder does not use `MaxGroupSize` for the
+session capacity.
 
-After the third player joins, `MorePlayersSteamLimit.log` should contain:
+With 3 or more players, the host keeps the session open and current until the
+party reaches `MaxPlayers`. With 3 to `MaxPlayers - 1` players, the pause menu
+party page shows `+Party Member` and `Code` to the host. `UE4SS.log` then
+contains:
+
+```text
+[MorePlayers] Party invite controls players=3 limit=25 result=shown
+```
+
+If the native log contains `Full-party threshold patch unavailable`, the mod
+uses its earlier fallback. It suppresses the full publication and writes this
+line after the third player joins:
 
 ```text
 [MorePlayersSteamLimit] Suppressed UWFGameInstance::UpdateHostSessionFullParty requested=...
 ```
 
-This confirms that the host did not publish the party as full.
-
-Repeated `3 -> 25` messages are normal. Wayfinder submits its original limit
-each time it updates the session. The mod replaces each submitted value.
+Repeated `25 -> 25` messages are normal. Wayfinder submits the limit each time
+it updates the session. A `3 -> 25` message shows that the session capacity
+patch was not applied. The hook then raises each submitted value, but Discord
+joins stop at 3 players.
 
 When a player joins or disconnects, `UE4SS.log` records ordered join events.
 Search for `Join diagnostic`. A kick entry includes the reason supplied by
@@ -187,6 +213,8 @@ Wayfinder when the host observes the kick call.
 - If `UE4SS.log` does not exist, check the UE4SS installation and custom signature.
 - If `Mod loaded` is absent, check the `MorePlayers` directory and `enabled.txt`.
 - If the native log does not exist, check `MorePlayers\dlls\main.dll`.
+- If `build signature mismatch` appears, the Wayfinder executable changed. The
+  mod then keeps the original session capacity instructions.
 - If Steam messages are absent, host a game before you check the log.
 - If `SetLobbyMemberLimit result=0` appears, Steam rejected the limit update.
 - Press F9 to record a party UI snapshot when UI diagnostics are enabled.
@@ -250,6 +278,22 @@ The native companion raises the host's EOS 1.16.3 session capacity and
 advertised `NumPublicConnections` value. EOS lobby/session search hooks remain
 read-only diagnostics; client search filters and lobby-browser UI are not
 modified, allowing joining clients to remain unmodded.
+
+Wayfinder writes the constant 3 as the session capacity each time the host
+creates or updates its session. The native companion changes these four
+instructions to the configured `MaxPlayers` value. Wayfinder's rich presence
+and Discord party data then use the configured limit. The native companion
+changes no instruction when the executable bytes are different.
+
+Wayfinder publishes the session as full when the party has 3 players. The
+native companion changes this threshold in two instructions to `MaxPlayers`.
+The session then stays open, with current difficulty and character data, until
+the party is full. If these instructions are different, the native companion
+suppresses the full publication.
+
+The pause menu party page hides `+Party Member` and `Code` at 3 players. The Lua
+script shows them again for the host while the party has fewer than
+`MaxPlayers` players. `+Party Member` opens the Steam overlay invite.
 
 ## Attribution
 

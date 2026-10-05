@@ -8,6 +8,9 @@
 - **Session capacity** - The maximum number of players accepted by the session.
 - **Public spaces** - The joinable player count advertised to session searches.
 - **RVA** - A relative virtual address measured from a loaded module's image base.
+- **Session capacity patch** - The MorePlayers native change of four Wayfinder instructions that write `NumPublicConnections = 3` to the configured limit.
+- **Local session capacity** - The `NumPublicConnections` value in the host's own named session. Outgoing EOS and Steam hooks do not change it.
+- **Full-party threshold** - The player count at which Wayfinder publishes the hosted session as full. The original value is 3. MorePlayers changes it to `MaxPlayers`.
 - **Lode** - The persistent AI-owned project knowledge in `lode/`.
 - **Distribution** - Generated files prepared for a mod hosting website.
 - **Mod manifest** - A `mod.json` file that defines one buildable mod package.

@@ -13,10 +13,8 @@ flowchart TD
 
 ## Active work
 
-- Identify the party widgets that hide at three players.
-- Keep `+Party Member` and `Code` available while capacity remains.
 - Record enough network data to diagnose client actor-channel failures.
-- Test four-player world travel and replication.
+- Test map travel with five players and sessions with more than five players.
 
 ## Deferred work
 

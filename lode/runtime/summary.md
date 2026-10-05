@@ -29,9 +29,11 @@ Mods/MorePlayers/config.ini
 ## Invariants
 
 - Lua changes Unreal object properties.
-- C++ changes external online-service calls.
+- C++ changes external online-service calls and six Wayfinder instructions:
+  four session-capacity sites and two full-party threshold sites.
 - C++ does not activate MinHook from the UE4SS startup callback.
-- The first event-loop update activates the Steam and full-party hooks as one batch.
+- The first event-loop update applies the instruction patches, then activates the
+  Steam hook and the optional full-party fallback hook as one batch.
 - The native DLL keeps its separate diagnostic log.
 - UE4SS records Lua output in `UE4SS.log`.
 

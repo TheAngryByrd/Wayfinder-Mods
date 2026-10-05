@@ -559,6 +559,86 @@ register_join_hook(
     end
 )
 
+-- PauseMenuPartyWidget_C "Update Component Visibility" collapses the
+-- +Party Member and Code controls when Player Array Size is 3 or more. The 3 is
+-- a constant in the Blueprint, so the session limits do not change it. UE4SS
+-- runs Blueprint hooks after the function body, so this hook shows both
+-- controls again below MAX_PLAYERS. PartySettingsBtn is shown exactly when the
+-- other Blueprint conditions are true: party settings visible and host.
+local PARTY_WIDGET_CLASS = "/Game/UI/UI_WF_Blueprints/UI_WF_UIPages/Coop/PauseMenuPartyWidget.PauseMenuPartyWidget_C"
+local BLUEPRINT_PARTY_LIMIT = 3
+-- ESlateVisibility::SelfHitTestInvisible, the value the Blueprint uses for a shown control.
+local SLATE_SHOWN = 4
+local party_invite_controls_hook_called = false
+
+local function show_party_invite_controls(widget)
+    if widget.PartySettingsBtn.Visibility ~= SLATE_SHOWN then
+        return "party-settings-hidden"
+    end
+    widget.UI_AddPlayerWidget:SetVisibility(SLATE_SHOWN)
+    widget.Button_InviteCodePopup:SetVisibility(SLATE_SHOWN)
+    return "shown"
+end
+
+local function restore_party_invite_controls(context, player_array_size, is_player_host)
+    local size = unwrap_parameter(player_array_size)
+    local host = unwrap_parameter(is_player_host)
+    -- The first call proves the hook, its parameter types, and the restore path
+    -- without a 3-player session. Below 3 players the Blueprint already shows
+    -- both controls for the host, so the probe changes nothing on screen.
+    if not party_invite_controls_hook_called then
+        party_invite_controls_hook_called = true
+        local probe = "skipped"
+        if host == true and type(size) == "number" and size < BLUEPRINT_PARTY_LIMIT then
+            local probe_ok, probe_result = pcall(show_party_invite_controls, unwrap_parameter(context))
+            probe = probe_ok and probe_result or ("error " .. tostring(probe_result))
+        end
+        print(string.format(
+            "[MorePlayers] Party invite controls first call players=%s (%s) host=%s (%s) probe=%s\n",
+            tostring(size),
+            type(size),
+            tostring(host),
+            type(host),
+            probe
+        ))
+    end
+    if host ~= true or type(size) ~= "number" or size < BLUEPRINT_PARTY_LIMIT or size >= MAX_PLAYERS then
+        return
+    end
+
+    local ok, result = pcall(show_party_invite_controls, unwrap_parameter(context))
+    print(string.format(
+        "[MorePlayers] Party invite controls players=%d limit=%d result=%s\n",
+        size,
+        MAX_PLAYERS,
+        ok and result or ("error " .. tostring(result))
+    ))
+end
+
+ExecuteInGameThread(function()
+    if LoadAsset then
+        local load_ok, load_error = pcall(LoadAsset, PARTY_WIDGET_CLASS)
+        if not load_ok then
+            print(string.format(
+                "[MorePlayers] Unable to load the party widget asset: %s\n",
+                tostring(load_error)
+            ))
+        end
+    end
+
+    local hook_ok, hook_error = pcall(function()
+        RegisterHook(PARTY_WIDGET_CLASS .. ":Update Component Visibility", restore_party_invite_controls)
+    end)
+    if hook_ok then
+        print("[MorePlayers] Party invite controls hook ready\n")
+    else
+        print(string.format(
+            "[MorePlayers] Party invite controls hook unavailable: %s\n",
+            tostring(hook_error)
+        ))
+    end
+end)
+
 if PARTY_UI_DIAGNOSTICS then
     local hook_ok, hook_error = pcall(function()
         RegisterHook("/Script/Wayfinder.PartyComponent:CLIENT_RefreshParty", function()

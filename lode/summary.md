@@ -62,6 +62,12 @@ flowchart LR
 
 - `MaxPlayers` supports values from 3 through 25.
 - The host installs the mod. Joining clients do not need it for capacity.
+- Wayfinder writes a hosted session capacity of 3 at four instructions.
+  MorePlayers changes these instructions to write the configured limit.
+- Wayfinder publishes the session as full at 3 players. MorePlayers changes
+  this threshold to the configured limit.
+- The host pause menu shows `+Party Member` and `Code` below the configured
+  limit.
 - Wayfinder scales the game for the number of connected players.
 - UE4SS 3.0.1 loads the Lua script and native DLL.
 - The custom `GUObjectArray.lua` signature is required for Wayfinder.

@@ -7,7 +7,11 @@ This companion therefore hooks only the runtime-proven method:
 
 - `ISteamMatchmaking009::SetLobbyMemberLimit` (vtable slot 31)
 - `UWFGameInstance::UpdateHostSessionFullParty` for the supported Wayfinder
-  executable build
+  executable build, only when the full-party threshold patch is not applied
+
+The companion also changes four session-capacity instructions and two
+full-party threshold instructions in `Wayfinder.exe`. See
+[Instruction patches](#instruction-patches).
 
 The crash-run trace showed this slot receiving `(this, lobby, 3)`, returning
 success, and reporting a resulting limit of 25. No other vtable slots or getters
@@ -32,6 +36,11 @@ setting.
   - [Calculate the RVA](#calculate-the-rva)
   - [Capture the byte signature](#capture-the-byte-signature)
   - [Validate the updated hook](#validate-the-updated-hook)
+- [Instruction patches](#instruction-patches)
+  - [Session capacity sites](#session-capacity-sites)
+  - [Full-party threshold sites](#full-party-threshold-sites)
+  - [Patch checks](#patch-checks)
+  - [Update the patch sites](#update-the-patch-sites)
 - [EOS lobby-browser diagnostics](#eos-lobby-browser-diagnostics)
 - [Important ABI warning](#important-abi-warning)
 <!-- toc:end -->
@@ -112,6 +121,10 @@ you add or change startup hooks. Synchronous startup activation blocks later
 `enabled.txt` mods. Concurrent activation can crash while Wayfinder initializes.
 
 ## Updating the full-party hook
+
+The full-party hook is a fallback. The DLL installs it only when the
+[full-party threshold patch](#full-party-threshold-sites) does not apply. With
+the threshold patch active, the log contains `Full-party hook not installed`.
 
 The full-party hook is specific to one `Wayfinder.exe` build. A game update can
 move the function, change its instructions, or change its calling convention.
@@ -215,6 +228,105 @@ That offset caused the previous validator failure.
 
 Treat `build signature mismatch` as a failed validation. Do not remove the byte
 check to force installation.
+
+## Instruction patches
+
+During native installation, the DLL changes the immediate value 3 to the
+configured `MaxPlayers` in two groups of instructions. `patch_immediates` in
+`dllmain.cpp` applies each group.
+
+### Session capacity sites
+
+Wayfinder writes the constant 3 to `FOnlineSessionSettings::NumPublicConnections`
+each time it builds the hosted session settings. The EOS and Steam hooks change
+only the values in the outgoing calls. Without this patch, the host keeps 3 in
+its local named session.
+
+`UWFRichPresenceSubsystem::IsSessionJoinable` compares the player count with
+the local value. At 3 players, the host clears the rich presence join
+information and publishes a party maximum of 3.
+
+These sites hold a 32-bit immediate value:
+
+| RVA | Function | Original bytes |
+|---|---|---|
+| `0x16309C2` | `UWFGameInstance::CreateHostPc` | `48 C7 45 F8 03 00 00 00` |
+| `0x163110A` | Defunct-session update | `48 C7 45 88 03 00 00 00` |
+| `0x164D64C` | `UpdateHostSessionEmptyParty` | `C7 45 A8 03 00 00 00` |
+| `0x164DA61` | `UpdateHostSessionFullParty` | `C7 45 A8 03 00 00 00` |
+
+`NumPublicConnections` is at offset `+0x8` in the settings object. A 64-bit
+`mov` with REX.W also writes 0 to `NumPrivateConnections` at `+0xC`.
+
+### Full-party threshold sites
+
+Both session refresh paths compare the GameState player count
+(`PlayerArray.Num`, `+0x248`) with 3. At 3 or more players, they call
+`UpdateHostSessionFullParty`, which disables join in progress and invites. For
+a public session, the settings helper then enables advertisement and presence
+join again. These sites hold a signed 8-bit immediate value:
+
+| RVA | Function | Original bytes |
+|---|---|---|
+| `0x163099A` | `UWFGameInstance::CreateHostPc` | `83 BB 48 02 00 00 03` |
+| `0x164D2EC` | Host-session refresh dispatcher | `83 BF 48 02 00 00 03` |
+
+With the patch, Wayfinder publishes the full state only at `MaxPlayers`. The
+DLL then does not install the full-party hook.
+
+The DLL applies this group only after the session capacity group applies. If
+either group does not apply, the DLL keeps the original threshold and installs
+the hook as a fallback. Thus a partial match falls back to the earlier tested
+configuration. A skipped threshold group writes this message:
+
+```text
+[MorePlayersSteamLimit] Full-party threshold patch not attempted: the session capacity patch is not applied
+```
+
+Only these two instructions lead to `UpdateHostSessionFullParty`: a call at
+`0x1416309A4` and a jump at `0x14164D30C`. No other code, pointer, or
+RIP-relative reference refers to the function.
+
+### Patch checks
+
+A site matches when its instruction prefix is correct and its immediate value
+is from 3 through 25. Thus a second installation in the same process finds the
+value that it wrote earlier.
+
+For each group, the DLL makes these checks before it writes a byte:
+
+1. It confirms that each site is inside the loaded image.
+2. It compares each site.
+3. It makes each site writable.
+
+If a check fails, the DLL changes no site in that group. A signature failure
+writes this message:
+
+```text
+[MorePlayersSteamLimit] Session capacity patch unavailable: build signature mismatch at ...; no sites changed
+```
+
+Successful patches write these messages:
+
+```text
+[MorePlayersSteamLimit] Session capacity patch applied at 4 sites
+[MorePlayersSteamLimit] Full-party threshold patch applied at 2 sites
+[MorePlayersSteamLimit] Full-party hook not installed: the full-party threshold is the configured limit
+```
+
+Several sites are on the same memory page (`0x14164D000`). The DLL restores
+the page protections in reverse order, so that each page receives its original
+protection last.
+
+### Update the patch sites
+
+1. Find each function through its log string or its full-party caller.
+2. Find the instruction that holds the constant 3.
+3. For a capacity site, confirm that the target object uses the
+   `FOnlineSessionSettings` vtable.
+4. Record the RVA and the instruction bytes before the immediate value.
+5. Update `session_capacity_sites` or `full_party_threshold_sites` in
+   `dllmain.cpp`.
 
 ## EOS lobby-browser diagnostics
 

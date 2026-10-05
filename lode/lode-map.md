@@ -13,6 +13,7 @@ flowchart TD
     Plans --> LoadoutsUIPlan[plans/loadouts-umg-pak.md]
     Map --> Runtime[runtime/summary.md]
     Runtime --> Session[runtime/session-capacity.md]
+    Session --> CapacityMap[runtime/capacity-binary-map.md]
     Runtime --> UI[runtime/party-ui.md]
     Runtime --> Diagnostics[runtime/diagnostics.md]
     Runtime --> Stability[runtime/stability.md]
@@ -45,6 +46,7 @@ flowchart TD
 
 - [Runtime summary](runtime/summary.md)
 - [Session capacity](runtime/session-capacity.md)
+- [Capacity checks in Wayfinder.exe](runtime/capacity-binary-map.md)
 - [Party UI](runtime/party-ui.md)
 - [Runtime diagnostics](runtime/diagnostics.md)
 - [Runtime stability](runtime/stability.md)

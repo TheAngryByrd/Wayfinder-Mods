@@ -468,6 +468,182 @@ bool install_wayfinder_full_party_hook(void*& installed_target)
         reinterpret_cast<void**>(&g_update_host_session_full_party));
 }
 
+// Each site is one instruction that ends with an immediate operand: the prefix
+// bytes are followed by the original value 3 as a signed imm8 or an imm32.
+struct ImmediatePatchSite
+{
+    std::uintptr_t rva;
+    const char* label;
+    unsigned char prefix[8];
+    std::size_t prefix_length;
+    std::size_t immediate_size;
+};
+
+struct ImmediatePatchGroup
+{
+    const char* name;
+    const char* value_name;
+    const ImmediatePatchSite* sites;
+    std::size_t site_count;
+};
+
+// Wayfinder writes the constant 3 to FOnlineSessionSettings::NumPublicConnections
+// in each hosted-session builder. The EOS and Steam hooks change only outgoing
+// calls, so the host's named session keeps 3. UWFRichPresenceSubsystem then
+// reports the session as not joinable at 3 players and publishes a party
+// maximum of 3. Each site is a `mov [rbp+disp8], imm32` instruction.
+constexpr ImmediatePatchSite session_capacity_sites[] = {
+    {0x16309C2, "UWFGameInstance::CreateHostPc", {0x48, 0xC7, 0x45, 0xF8}, 4, 4},
+    {0x163110A, "UWFGameInstance defunct-session update", {0x48, 0xC7, 0x45, 0x88}, 4, 4},
+    {0x164D64C, "UWFGameInstance::UpdateHostSessionEmptyParty", {0xC7, 0x45, 0xA8}, 3, 4},
+    {0x164DA61, "UWFGameInstance::UpdateHostSessionFullParty", {0xC7, 0x45, 0xA8}, 3, 4},
+};
+
+// Both session refresh paths compare GameState PlayerArray.Num (+0x248) with 3
+// and select UpdateHostSessionFullParty at 3 or more players. That function
+// disables join in progress and invites (the settings helper then enables
+// advertisement again for a public session). With MaxPlayers here, the session
+// stays open with current attributes until the configured limit.
+// Each site is a `cmp dword ptr [reg+0x248], imm8` instruction.
+constexpr ImmediatePatchSite full_party_threshold_sites[] = {
+    {0x163099A, "UWFGameInstance::CreateHostPc full-party selector",
+        {0x83, 0xBB, 0x48, 0x02, 0x00, 0x00}, 6, 1},
+    {0x164D2EC, "UWFGameInstance host-session refresh full-party selector",
+        {0x83, 0xBF, 0x48, 0x02, 0x00, 0x00}, 6, 1},
+};
+
+constexpr ImmediatePatchGroup session_capacity_patch{
+    "Session capacity", "NumPublicConnections",
+    session_capacity_sites, std::size(session_capacity_sites)};
+constexpr ImmediatePatchGroup full_party_threshold_patch{
+    "Full-party threshold", "player threshold",
+    full_party_threshold_sites, std::size(full_party_threshold_sites)};
+
+std::string rva_text(std::uintptr_t rva)
+{
+    std::ostringstream out;
+    out << "Wayfinder+0x" << std::uppercase << std::hex << rva;
+    return out.str();
+}
+
+std::string site_text(const ImmediatePatchSite& site)
+{
+    return std::string(site.label) + "[" + rva_text(site.rva) + "]";
+}
+
+std::int32_t read_immediate(const unsigned char* immediate, std::size_t size)
+{
+    if (size == 1) return static_cast<std::int8_t>(immediate[0]);
+    std::int32_t value{};
+    std::memcpy(&value, immediate, sizeof(value));
+    return value;
+}
+
+void write_immediate(unsigned char* immediate, std::size_t size, std::int32_t value)
+{
+    if (size == 1) immediate[0] = static_cast<unsigned char>(static_cast<std::int8_t>(value));
+    else std::memcpy(immediate, &value, sizeof(value));
+}
+
+bool image_contains(const unsigned char* image, std::uintptr_t rva, std::size_t length)
+{
+    const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(image);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return false;
+    const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(image + dos->e_lfanew);
+    return nt->Signature == IMAGE_NT_SIGNATURE && rva + length <= nt->OptionalHeader.SizeOfImage;
+}
+
+// Returns true when every site of the group holds the configured value after
+// the call. The patch writes only instruction data and does not refer to this
+// DLL, so it stays valid after the DLL unloads. A value from 3 through 25 also
+// matches, so a second installation in the same process finds its own earlier
+// value.
+bool patch_immediates(unsigned char* wayfinder, const ImmediatePatchGroup& group, std::int32_t configured)
+{
+    const std::string name(group.name);
+    if (!wayfinder)
+    {
+        log(name + " patch unavailable: main module not found");
+        return false;
+    }
+
+    // Compare every site before the first protection change. A different game
+    // build then keeps all of its original instructions.
+    std::vector<unsigned char*> immediates(group.site_count);
+    std::vector<std::int32_t> current(group.site_count);
+    std::size_t pending = 0;
+    for (std::size_t index = 0; index < group.site_count; ++index)
+    {
+        const auto& site = group.sites[index];
+        unsigned char* code = wayfinder + site.rva;
+        immediates[index] = code + site.prefix_length;
+        const bool matches = image_contains(wayfinder, site.rva, site.prefix_length + site.immediate_size)
+            && std::memcmp(code, site.prefix, site.prefix_length) == 0;
+        if (matches) current[index] = read_immediate(immediates[index], site.immediate_size);
+        if (!matches || current[index] < 3 || current[index] > 25)
+        {
+            log(name + " patch unavailable: build signature mismatch at "
+                + site_text(site) + "; no sites changed");
+            return false;
+        }
+        if (current[index] != configured) ++pending;
+    }
+    if (pending == 0)
+    {
+        log(name + " patch not necessary: all sites hold " + std::to_string(configured));
+        return true;
+    }
+
+    // Change every protection before the first write, so a failure changes no
+    // site. Several sites share a page: restore in reverse order so each page
+    // receives its original protection last.
+    std::vector<DWORD> old_protections(group.site_count);
+    std::size_t unlocked = 0;
+    for (; unlocked < group.site_count; ++unlocked)
+    {
+        if (!VirtualProtect(immediates[unlocked], group.sites[unlocked].immediate_size,
+                PAGE_EXECUTE_READWRITE, &old_protections[unlocked]))
+        {
+            const DWORD error = GetLastError();
+            log("Unable to make " + name + " site writable at "
+                + site_text(group.sites[unlocked]) + " error=" + std::to_string(error)
+                + "; no sites changed");
+            break;
+        }
+    }
+
+    const bool writable = unlocked == group.site_count;
+    if (writable)
+    {
+        for (std::size_t index = 0; index < group.site_count; ++index)
+        {
+            if (current[index] == configured) continue;
+            const auto& site = group.sites[index];
+            // The limit is less than 128, so the write changes only the low byte.
+            write_immediate(immediates[index], site.immediate_size, configured);
+            FlushInstructionCache(GetCurrentProcess(), immediates[index], site.immediate_size);
+            log("Patched " + site_text(site) + " " + group.value_name + " "
+                + std::to_string(current[index]) + " -> " + std::to_string(configured));
+        }
+    }
+
+    for (std::size_t index = unlocked; index-- > 0;)
+    {
+        DWORD replaced{};
+        if (!VirtualProtect(immediates[index], group.sites[index].immediate_size,
+                old_protections[index], &replaced))
+        {
+            const DWORD error = GetLastError();
+            log("Unable to restore page protection at " + site_text(group.sites[index])
+                + " error=" + std::to_string(error));
+        }
+    }
+
+    if (writable)
+        log(name + " patch applied at " + std::to_string(pending) + " sites");
+    return writable;
+}
+
 bool hook_address(void* target, const char* label, void* replacement, void** original)
 {
     log(std::string("Hook target ") + label + " address=" + pointer_details(target));
@@ -590,6 +766,15 @@ void install()
     HMODULE steam = GetModuleHandleW(L"steam_api64.dll");
     log("Native companion starting");
     load_config();
+    auto* wayfinder = reinterpret_cast<unsigned char*>(GetModuleHandleW(nullptr));
+    // Apply the threshold only after the capacity sites hold the limit. If the
+    // capacity group fails, the host keeps the earlier tested configuration:
+    // unpatched threshold and the suppression hook.
+    const bool capacity_patched = patch_immediates(wayfinder, session_capacity_patch, limit());
+    const bool threshold_patched = capacity_patched
+        && patch_immediates(wayfinder, full_party_threshold_patch, limit());
+    if (!capacity_patched)
+        log("Full-party threshold patch not attempted: the session capacity patch is not applied");
     if (!steam) { log("steam_api64.dll not loaded"); return; }
     if (MH_Initialize() != MH_OK) { log("MinHook init failed"); return; }
     g_mh = true;
@@ -612,8 +797,13 @@ void install()
         "ISteamMatchmaking009::SetLobbyMemberLimit[v31]",
         reinterpret_cast<void*>(&limit_hook),
         reinterpret_cast<void**>(&g_set_limit));
+    // The suppression hook is the fallback for a build where the threshold
+    // patch does not match. With the patch, Wayfinder publishes the full state
+    // only at the configured limit.
     void* full_party_target{};
-    const bool full_party_created = install_wayfinder_full_party_hook(full_party_target);
+    if (threshold_patched)
+        log("Full-party hook not installed: the full-party threshold is the configured limit");
+    const bool full_party_created = !threshold_patched && install_wayfinder_full_party_hook(full_party_target);
 
     const MH_STATUS queue_steam = steam_limit_created
         ? MH_QueueEnableHook(steam_limit_target)

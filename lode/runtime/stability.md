@@ -34,8 +34,9 @@ flowchart TD
 - EOS hook installation starts five seconds after UE4SS reports that Unreal
   initialization is complete.
 - Steam and Wayfinder hook creation runs on the first UE4SS event-loop update.
-- The installer creates the Steam and full-party hooks while disabled and
-  enables both with one MinHook batch operation.
+- The installer applies the instruction patches first. It creates the Steam
+  hook and the optional full-party fallback hook while disabled and enables
+  them with one MinHook batch operation.
 - Activating an individual native hook during `on_program_start` blocked later
   `enabled.txt` mods. Activating the hooks from a concurrent worker caused a
   null execute access violation during Wayfinder initialization.
