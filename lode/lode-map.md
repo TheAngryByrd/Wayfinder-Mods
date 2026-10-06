@@ -11,10 +11,12 @@ flowchart TD
     Map --> Plans[plans/roadmap.md]
     Plans --> LoadoutsPlan[plans/loadouts.md]
     Plans --> LoadoutsUIPlan[plans/loadouts-umg-pak.md]
+    Plans --> NexusRelease[plans/nexus-release.md]
     Map --> Runtime[runtime/summary.md]
     Runtime --> Session[runtime/session-capacity.md]
     Session --> CapacityMap[runtime/capacity-binary-map.md]
     Session --> FivePlayer[runtime/five-player-session.md]
+    Runtime --> ConfigParsing[runtime/config-parsing.md]
     Runtime --> UI[runtime/party-ui.md]
     Runtime --> Diagnostics[runtime/diagnostics.md]
     Runtime --> Stability[runtime/stability.md]
@@ -42,6 +44,7 @@ flowchart TD
 - [Current roadmap](plans/roadmap.md)
 - [Loadouts validation plan](plans/loadouts.md)
 - [Loadouts UMG and Pak plan](plans/loadouts-umg-pak.md)
+- [Nexus Mods release plan](plans/nexus-release.md)
 
 ## Runtime
 
@@ -49,6 +52,7 @@ flowchart TD
 - [Session capacity](runtime/session-capacity.md)
 - [Capacity checks in Wayfinder.exe](runtime/capacity-binary-map.md)
 - [Five-player session evidence](runtime/five-player-session.md)
+- [Configuration parsing](runtime/config-parsing.md)
 - [Party UI](runtime/party-ui.md)
 - [Runtime diagnostics](runtime/diagnostics.md)
 - [Runtime stability](runtime/stability.md)

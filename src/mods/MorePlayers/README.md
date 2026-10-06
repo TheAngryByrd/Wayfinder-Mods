@@ -48,6 +48,30 @@ PartyUiDiagnostics=0
 Supported values are 3 through 25. The Lua script and native DLL read this same
 setting when Wayfinder starts. Restart Wayfinder after you change the file.
 
+The Lua script and native DLL use the same rule for each `MaxPlayers` line:
+
+- The key must be exactly `MaxPlayers`. The key is case-sensitive.
+- The key must be the first text on the line. The mod ignores comment lines
+  such as `# MaxPlayers=8`.
+- You can put spaces or tabs before the key, around `=`, and after the value.
+- The value must contain only digits. Leading zeros are valid, for example
+  `MaxPlayers=0012`.
+- The value must be from 3 through 25.
+- The mod ignores a line that has other text after the value. For example, it
+  ignores `MaxPlayers=10 # note`.
+- The mod ignores an out-of-range value. It does not change the value to the
+  nearest supported value.
+- If more than one line is valid, the last valid line sets the limit.
+- If no line is valid, the mod uses 25. `UE4SS.log` and
+  `MorePlayersSteamLimit.log` then show a `Config missing/invalid` message.
+
+This example sets the limit to 12 in the Lua script and native DLL:
+
+```ini
+# MaxPlayers=8 example
+MaxPlayers=12
+```
+
 Party UI diagnostics run after each player joins. Press F9 to record an
 additional snapshot in `UE4SS.log`. Set `PartyUiDiagnostics=1` to enable these
 snapshots.

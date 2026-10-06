@@ -2,6 +2,8 @@
 
 UE4SS loads the Lua script and native DLL from the same `MorePlayers` mod. Both
 components read `Mods/MorePlayers/config.ini` at process startup.
+Both accept the same `MaxPlayers` lines. See
+[Configuration parsing](config-parsing.md).
 
 ```mermaid
 sequenceDiagram

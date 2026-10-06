@@ -16,6 +16,8 @@ local function load_max_players()
 
     local max_players_found = false
     for line in file:lines() do
+        -- parse_max_players_line() in native/dllmain.cpp must accept the same
+        -- lines. The last valid line wins in both parsers.
         local value = line:match("^%s*MaxPlayers%s*=%s*(%d+)%s*$")
         if value then
             local parsed = tonumber(value)

@@ -9,9 +9,11 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -146,24 +148,60 @@ std::filesystem::path config_path()
     return std::filesystem::path(path).parent_path().parent_path() / L"config.ini";
 }
 
+// Same whitespace set as Lua %s in the C locale.
+bool is_config_space(char c)
+{
+    return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
+
+// This parser must accept the same lines as load_max_players() in
+// Scripts/main.lua: ^%s*MaxPlayers%s*=%s*(%d+)%s*$ and 3 through 25.
+// A mismatch gives Unreal and the online services different limits.
+std::optional<int> parse_max_players_line(const std::string& line)
+{
+    constexpr std::string_view key{"MaxPlayers"};
+    std::size_t i{};
+    const auto skip_space = [&] { while (i < line.size() && is_config_space(line[i])) ++i; };
+
+    skip_space();
+    if (line.compare(i, key.size(), key) != 0) return std::nullopt;
+    i += key.size();
+    skip_space();
+    if (i == line.size() || line[i] != '=') return std::nullopt;
+    ++i;
+    skip_space();
+
+    const auto digits_begin = i;
+    int value{};
+    while (i < line.size() && line[i] >= '0' && line[i] <= '9')
+    {
+        // Keep the value at 26 or less. Then a long digit string cannot
+        // overflow, and the range check rejects 26.
+        value = std::min(value * 10 + (line[i] - '0'), 26);
+        ++i;
+    }
+    if (i == digits_begin) return std::nullopt;
+    skip_space();
+    if (i != line.size() || value < 3 || value > 25) return std::nullopt;
+    return value;
+}
+
 void load_config()
 {
     const auto path = config_path();
     std::ifstream file(path);
     std::string line;
+    std::optional<int> configured;
+    // The last valid line wins, as in the Lua parser. The parser skips invalid lines.
     while (std::getline(file, line))
     {
-        const auto equals = line.find('=');
-        if (equals == std::string::npos || line.substr(0, equals).find("MaxPlayers") == std::string::npos) continue;
-        try
-        {
-            const int configured = std::stoi(line.substr(equals + 1));
-            if (configured < 3 || configured > 25) throw std::out_of_range("MaxPlayers");
-            g_limit = configured;
-            log("Config MaxPlayers=" + std::to_string(configured) + " path=" + path.string());
-            return;
-        }
-        catch (...) { break; }
+        if (const auto value = parse_max_players_line(line)) configured = value;
+    }
+    if (configured)
+    {
+        g_limit = *configured;
+        log("Config MaxPlayers=" + std::to_string(*configured) + " path=" + path.string());
+        return;
     }
     log("Config missing/invalid; using MaxPlayers=25 path=" + path.string());
     g_limit = 25;
