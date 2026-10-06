@@ -41,6 +41,10 @@ src/mods/SkipStartupWarnings/nexus/page-kit.md
 - The file name has no version. The version field holds it.
 - Both pages use the tags `AI-Generated Content` (code) and `AI Media` (page
   text). The user chose these tags.
+- The READMEs and pages name both AI tools: Claude and Codex generated much of
+  the code. Codex commits carry no co-author line, so the git history does not
+  show all AI work. The repository `AGENTS.md` file is the Codex instruction
+  file.
 - Both pages credit FuniWF for the `GUObjectArray.lua` signature. The
   MorePlayersPlus page also credits FuniWF for the Lua session-limit approach.
 - The MorePlayersPlus page credits MinHook and its Hacker Disassembler Engine.

@@ -25,7 +25,7 @@ The work happens on branch `nexus-release` in the worktree
 |---|---|
 | 1. Config-parser fix | Done on `nexus-release` |
 | 2. Startup crash fix | Done on `nexus-release`, not runtime-tested |
-| 3. Runtime tests | Pending |
+| 3. Runtime tests | 1.0.0 installed in the game, tests pending |
 | 4. Build | Built from `nexus-release`; rebuild after step 3 |
 | 5. Inspect ZIP files | Done for the current build |
 | 6. Page kits | Done: `src/mods/<ModName>/nexus/` |
@@ -37,8 +37,12 @@ The work happens on branch `nexus-release` in the worktree
 2. Remove the MinHook startup activation from the normal MorePlayersPlus path.
    See [Startup crash fix](#startup-crash-fix).
 3. Test a solo start, a Steam friends list `Join Game`, a Steam overlay
-   invite with a real friend, and both mods together. Deploy only with the
-   user's approval. First move `Mods\MorePlayers` to a backup outside `Mods`.
+   invite with a real friend, and both mods together. The game folder holds
+   the 1.0.0 ZIP contents. The earlier build and its last `UE4SS.log` are in
+   `Wayfinder\ModBackups\20261006-before-MorePlayersPlus-1.0.0`. Loadouts,
+   LoadoutsProbe, and MoreDrops are also enabled in the game folder. MoreDrops
+   also uses MinHook, so a startup crash with these mods enabled does not
+   identify MorePlayersPlus as the cause.
 4. Build both packages with `build.ps1 -Mod MorePlayersPlus,SkipStartupWarnings`
    after the last README change.
 5. Inspect each ZIP:
@@ -107,7 +111,8 @@ lines. A few clean starts cannot prove a 1-in-7 crash fixed.
   origin of the Lua session-limit approach.
 - A user who installed an earlier MorePlayers build must delete
   `Mods\MorePlayers`. Two copies would apply the patches and hooks twice.
-- Both pages use the tags `AI-Generated Content` and `AI Media`.
+- Both pages use the tags `AI-Generated Content` and `AI Media`. The AI
+  statement names Claude and Codex for both mods.
 - Open: FuniWF must confirm in a Nexus forum private message that the
   permission covers the `GUObjectArray.lua` signature in both mods and the
   name MorePlayersPlus.

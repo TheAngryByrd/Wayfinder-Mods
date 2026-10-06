@@ -241,4 +241,4 @@ Each hook finishes the page transition and calls Wayfinder's
   binaries.
 - Wayfinder is a game by Airship Syndicate. Airship Syndicate does not make or
   support this mod.
-- An AI tool (Claude) generated much of the code and documentation.
+- AI tools (Claude and Codex) generated much of the code and documentation.
