@@ -14,7 +14,7 @@ flowchart TD
 ## Active work
 
 - Record enough network data to diagnose client actor-channel failures.
-- Test map travel with five players and sessions with more than five players.
+- Test sessions with more than five players.
 
 ## Deferred work
 

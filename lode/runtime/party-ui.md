@@ -116,7 +116,9 @@ A solo run confirms the registration, the parameter types, and the restore code
 (`probe=shown`). A 3-player host run confirms the restore branch: `UE4SS.log`
 shows `Party invite controls players=3 limit=25 result=shown` each time the
 party page updates. A 4-player host run shows the same result with
-`players=4`, and the fourth player joined through these controls.
+`players=4`, and the fourth player joined through these controls. During map
+travel the hook can see a transient count of players + 1. See
+[Five-player session evidence](five-player-session.md).
 
 An offline Lua test loads `main.lua` with stub UE4SS globals, captures the
 registered callback, and calls it with fake widgets. The test script is not

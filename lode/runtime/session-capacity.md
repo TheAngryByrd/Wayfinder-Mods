@@ -173,8 +173,11 @@ travel error.
 A map travel with four players to Skylight succeeded. Each client swapped its
 player state (`PlayerArray.Num()` 5, then 4 in the same 2 ms), and all four
 players reported `client-loading-complete`. A fifth player joined the same
-session (`PlayerArray.Num() = 5`, `Join succeeded`) with no full publication. The Digital Extremes backend is not connected, so it cannot enforce a
-party limit.
+session, and three map travels with five players succeeded. See
+[Five-player session evidence](five-player-session.md).
+
+The Digital Extremes backend is not connected, so it cannot enforce a party
+limit.
 
 Lesson learned: the original 3-player stop had several causes. The host hid
 its invite controls at 3 players, published the session as full at 3 players,
