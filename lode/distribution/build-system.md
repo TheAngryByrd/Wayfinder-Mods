@@ -78,6 +78,12 @@ The build copies each `content` child into `Mods/<ModName>`.
 The build copies an optional native target to `dlls/main.dll`.
 The build copies an optional Pak to `Atlas/Content/Paks/LogicMods`.
 The build copies the shared Wayfinder signature when the manifest enables it.
+The build copies an optional `native/licenses` folder to `Mods/<ModName>/licenses`.
+The distribution folder keeps `README.md`. The archive stores it as
+`<ModName>-README.md`, so two archives in one game folder keep both READMEs.
+`New-ModArchive` writes ZIP entries with `/` separators in sorted order.
+Windows PowerShell 5.1 `Compress-Archive` writes `\` separators, which the ZIP
+specification does not permit.
 
 Native output uses `build/native/<ModName>/<Configuration>`.
 UMG output uses `build/umg/<ModName>/pak`.

@@ -48,6 +48,37 @@ function Assert-ChildPath {
     }
 }
 
+# Windows PowerShell 5.1 Compress-Archive writes backslash entry names, which
+# the ZIP specification does not permit and some extractors mishandle. This
+# writer uses forward slashes and a sorted, repeatable entry order. The README
+# entry gets a per-mod name, so two archives in one game folder do not
+# overwrite each other's README.
+function New-ModArchive {
+    param(
+        [Parameter(Mandatory)][string] $DistributionDirectory,
+        [Parameter(Mandatory)][string] $ArchivePath,
+        [Parameter(Mandatory)][string] $ReadmeEntryName
+    )
+
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    $root = [System.IO.Path]::GetFullPath($DistributionDirectory).TrimEnd('\') + '\'
+    $entries = @(Get-ChildItem -LiteralPath (Join-Path $DistributionDirectory 'Atlas') -File -Recurse |
+        ForEach-Object { [pscustomobject]@{ Source = $_.FullName; Name = $_.FullName.Substring($root.Length).Replace('\', '/') } } |
+        Sort-Object -Property Name)
+    $entries += [pscustomobject]@{ Source = (Join-Path $DistributionDirectory 'README.md'); Name = $ReadmeEntryName }
+
+    $archive = [System.IO.Compression.ZipFile]::Open($ArchivePath, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($entry in $entries) {
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $archive, $entry.Source, $entry.Name, [System.IO.Compression.CompressionLevel]::Optimal)
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 $repositoryDirectory = $PSScriptRoot
 $modsDirectory = Join-Path $repositoryDirectory 'src\mods'
 $sharedSignature = Join-Path $repositoryDirectory 'src\shared\UE4SS_Signatures\GUObjectArray.lua'
@@ -337,6 +368,15 @@ foreach ($definition in $selectedDefinitions) {
         $dllDirectory = Join-Path $modOutputDirectory 'dlls'
         New-Item -ItemType Directory -Path $dllDirectory -Force | Out-Null
         Copy-Item -LiteralPath $nativeDll -Destination (Join-Path $dllDirectory 'main.dll') -Force
+
+        # A statically linked library can require its license notice in each
+        # binary distribution, for example MinHook's BSD license.
+        $nativeLicenses = Join-Path $definition.NativeDirectory 'licenses'
+        if (Test-Path -LiteralPath $nativeLicenses) {
+            $licenseOutputDirectory = Join-Path $modOutputDirectory 'licenses'
+            New-Item -ItemType Directory -Path $licenseOutputDirectory -Force | Out-Null
+            Copy-Item -Path (Join-Path $nativeLicenses '*') -Destination $licenseOutputDirectory -Recurse -Force
+        }
     }
 
     if ($definition.IncludeWayfinderSignature) {
@@ -370,11 +410,10 @@ foreach ($definition in $selectedDefinitions) {
         if (Test-Path -LiteralPath $archivePath) {
             Remove-Item -LiteralPath $archivePath -Force
         }
-        $archiveItems = @(
-            (Join-Path $distributionDirectory 'Atlas'),
-            (Join-Path $distributionDirectory 'README.md')
-        )
-        Compress-Archive -LiteralPath $archiveItems -DestinationPath $archivePath -CompressionLevel Optimal
+        New-ModArchive `
+            -DistributionDirectory $distributionDirectory `
+            -ArchivePath $archivePath `
+            -ReadmeEntryName "$($definition.Id)-README.md"
     }
 
     Write-Host "Nexus Mods distribution: $distributionDirectory"

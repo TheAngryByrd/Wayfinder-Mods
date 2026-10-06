@@ -26,9 +26,10 @@ flowchart LR
 
 ## MorePlayersPlus package
 
-- The archive root contains `Atlas` and `README.md`.
+- The archive root contains `Atlas` and `MorePlayersPlus-README.md`.
 - Users extract the archive into the Wayfinder installation directory.
-- The archive includes the Lua script, native DLL, configuration, and signature.
+- The archive includes the Lua script, native DLL, configuration, signature,
+  and the MinHook and UE4SS license notices in `Mods/MorePlayersPlus/licenses`.
 - The archive does not include UE4SS binaries.
 - The Nexus README links to UE4SS 3.0.1.
 - User configuration instructions point to the installed `config.ini` file.
