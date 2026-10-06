@@ -2,7 +2,7 @@
 
 The pause menu party page hides the `+Party Member` and `Code` controls at 3
 players. A constant in the Blueprint causes this, not a fixed member array.
-The MorePlayers Lua script shows both controls again for the host while the
+The MorePlayersPlus Lua script shows both controls again for the host while the
 party has fewer than `MaxPlayers` players.
 
 ```mermaid
@@ -105,8 +105,8 @@ UE4SS reads an `EnumProperty` as an integer. Each read also writes a global
   `PartyComponent:CLIENT_RefreshParty` and on F9.
 
 ```text
-[MorePlayers] Party invite controls first call players=1 (number) host=true (boolean) probe=shown
-[MorePlayers] Party invite controls players=3 limit=25 result=shown
+[MorePlayersPlus] Party invite controls first call players=1 (number) host=true (boolean) probe=shown
+[MorePlayersPlus] Party invite controls players=3 limit=25 result=shown
 ```
 
 ## Limits

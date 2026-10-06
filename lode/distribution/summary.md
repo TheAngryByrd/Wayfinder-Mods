@@ -7,10 +7,10 @@ Generated native files and distribution files do not belong in Git.
 flowchart LR
     Mods[src/mods] --> Build[build.ps1]
     Shared[src/shared] --> Build
-    Build --> MorePlayers[dist/NexusMods/MorePlayers]
+    Build --> MorePlayersPlus[dist/NexusMods/MorePlayersPlus]
     Build --> Additional[dist/NexusMods/AnotherMod]
     Build --> LoadoutsPak[Loadouts.pak]
-    MorePlayers --> Zip[Wayfinder-MorePlayers-NexusMods.zip]
+    MorePlayersPlus --> Zip[Wayfinder-MorePlayersPlus-NexusMods.zip]
 ```
 
 ## Multi-mod contract
@@ -24,7 +24,7 @@ flowchart LR
 - Each generated package uses `dist/NexusMods/<ModName>`.
 - Each manifest defines its unique ZIP file name.
 
-## MorePlayers package
+## MorePlayersPlus package
 
 - The archive root contains `Atlas` and `README.md`.
 - Users extract the archive into the Wayfinder installation directory.
@@ -32,19 +32,19 @@ flowchart LR
 - The archive does not include UE4SS binaries.
 - The Nexus README links to UE4SS 3.0.1.
 - User configuration instructions point to the installed `config.ini` file.
-- Build instructions identify `src/mods/MorePlayers/content/config.ini`.
+- Build instructions identify `src/mods/MorePlayersPlus/content/config.ini`.
 
 ## Build example
 
 ```powershell
-.\build.ps1 -Mod MorePlayers
+.\build.ps1 -Mod MorePlayersPlus
 ```
 
 ## Output example
 
 ```text
-dist/NexusMods/MorePlayers/Atlas/Binaries/Win64/Mods/MorePlayers
-dist/Wayfinder-MorePlayers-NexusMods.zip
+dist/NexusMods/MorePlayersPlus/Atlas/Binaries/Win64/Mods/MorePlayersPlus
+dist/Wayfinder-MorePlayersPlus-NexusMods.zip
 ```
 
 Use `-SkipNativeBuild` to reuse the current DLL.

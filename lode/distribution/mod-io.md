@@ -32,7 +32,7 @@ flowchart LR
 ## Native path example
 
 ```text
-Atlas/Binaries/Win64/Mods/MorePlayers/dlls/main.dll
+Atlas/Binaries/Win64/Mods/MorePlayersPlus/dlls/main.dll
 ```
 
 The Wayfinder creator guide is at

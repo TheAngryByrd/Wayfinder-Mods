@@ -1,7 +1,7 @@
 # Runtime summary
 
-UE4SS loads the Lua script and native DLL from the same `MorePlayers` mod. Both
-components read `Mods/MorePlayers/config.ini` at process startup.
+UE4SS loads the Lua script and native DLL from the same `MorePlayersPlus` mod. Both
+components read `Mods/MorePlayersPlus/config.ini` at process startup.
 Both accept the same `MaxPlayers` lines. See
 [Configuration parsing](config-parsing.md).
 
@@ -17,25 +17,27 @@ sequenceDiagram
     UE4SS->>UE4SS: Finish enabled.txt discovery
     UE4SS->>DLL: First event-loop update
     Lua->>Game: Set GameSession MaxPlayers
-    DLL->>Game: Activate native hook batches
+    DLL->>Game: Apply instruction patches
 ```
 
 ## Runtime files
 
 ```text
-Mods/MorePlayers/Scripts/main.lua
-Mods/MorePlayers/dlls/main.dll
-Mods/MorePlayers/config.ini
+Mods/MorePlayersPlus/Scripts/main.lua
+Mods/MorePlayersPlus/dlls/main.dll
+Mods/MorePlayersPlus/config.ini
 ```
 
 ## Invariants
 
 - Lua changes Unreal object properties.
-- C++ changes external online-service calls and six Wayfinder instructions:
-  four session-capacity sites and two full-party threshold sites.
+- C++ changes six Wayfinder instructions: four session-capacity sites and two
+  full-party threshold sites. In the fallback, it also changes external
+  online-service calls through MinHook.
 - C++ does not activate MinHook from the UE4SS startup callback.
-- The first event-loop update applies the instruction patches, then activates the
-  Steam hook and the optional full-party fallback hook as one batch.
+- The first event-loop update applies the instruction patches. When both groups
+  apply, it activates no hook. In the fallback, it activates the Steam hook and
+  the full-party hook as one batch.
 - The native DLL keeps its separate diagnostic log.
 - UE4SS records Lua output in `UE4SS.log`.
 

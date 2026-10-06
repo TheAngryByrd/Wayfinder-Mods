@@ -24,7 +24,7 @@ flowchart TD
 ## Validation example
 
 ```text
-[MorePlayers] Party UI snapshot begin reason=AddPlayerState
+[MorePlayersPlus] Party UI snapshot begin reason=AddPlayerState
 ```
 
 Related: [Party UI](../runtime/party-ui.md), [Session capacity](../runtime/session-capacity.md), and [Distribution](../distribution/summary.md).

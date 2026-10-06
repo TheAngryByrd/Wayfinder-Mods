@@ -1,16 +1,16 @@
 local MAX_PLAYERS = 25
-local CONFIG_PATH = "Mods/MorePlayers/config.ini"
+local CONFIG_PATH = "Mods/MorePlayersPlus/config.ini"
 local PARTY_UI_DIAGNOSTICS = false
 
 local function load_max_players()
     if not io or not io.open then
-        print("[MorePlayers] Lua file I/O unavailable; using MaxPlayers=25\n")
+        print("[MorePlayersPlus] Lua file I/O unavailable; using MaxPlayers=25\n")
         return
     end
 
     local file = io.open(CONFIG_PATH, "r")
     if not file then
-        print(string.format("[MorePlayers] Config not found at %s; using MaxPlayers=25\n", CONFIG_PATH))
+        print(string.format("[MorePlayersPlus] Config not found at %s; using MaxPlayers=25\n", CONFIG_PATH))
         return
     end
 
@@ -35,9 +35,9 @@ local function load_max_players()
 
     file:close()
     if max_players_found then
-        print(string.format("[MorePlayers] Config MaxPlayers=%d\n", MAX_PLAYERS))
+        print(string.format("[MorePlayersPlus] Config MaxPlayers=%d\n", MAX_PLAYERS))
     else
-        print("[MorePlayers] Config missing/invalid MaxPlayers; using 25\n")
+        print("[MorePlayersPlus] Config missing/invalid MaxPlayers; using 25\n")
     end
 end
 
@@ -59,7 +59,7 @@ local function dump_party_ui(reason)
     ExecuteInGameThread(function()
         local widgets = FindAllOf("Widget") or {}
         local matched = 0
-        print(string.format("[MorePlayers] Party UI snapshot begin reason=%s widgets=%d\n", reason, #widgets))
+        print(string.format("[MorePlayersPlus] Party UI snapshot begin reason=%s widgets=%d\n", reason, #widgets))
 
         for _, widget in ipairs(widgets) do
             local ok, full_name = pcall(function()
@@ -74,7 +74,7 @@ local function dump_party_ui(reason)
                 then
                     matched = matched + 1
                     print(string.format(
-                        "[MorePlayers] Party UI widget name=%s visibility=%s enabled=%s\n",
+                        "[MorePlayersPlus] Party UI widget name=%s visibility=%s enabled=%s\n",
                         full_name,
                         get_object_text(widget, "Visibility"),
                         get_object_text(widget, "bIsEnabled")
@@ -83,19 +83,19 @@ local function dump_party_ui(reason)
             end
         end
 
-        print(string.format("[MorePlayers] Party UI snapshot end matched=%d\n", matched))
+        print(string.format("[MorePlayersPlus] Party UI snapshot end matched=%d\n", matched))
     end)
 end
 
 load_max_players()
 
-print("[MorePlayers] Mod loaded\n")
+print("[MorePlayersPlus] Mod loaded\n")
 
 local function update_session(context, label)
     context.MaxPlayers = MAX_PLAYERS
     context.MaxPartySize = MAX_PLAYERS
     print(string.format(
-        "[MorePlayers] %s limits: players=%d party=%d\n",
+        "[MorePlayersPlus] %s limits: players=%d party=%d\n",
         label,
         context.MaxPlayers,
         context.MaxPartySize
@@ -105,7 +105,7 @@ end
 local function update_social_settings(context)
     context.DefaultMaxPartySize = MAX_PLAYERS
     print(string.format(
-        "[MorePlayers] Social default party size: %d\n",
+        "[MorePlayersPlus] Social default party size: %d\n",
         context.DefaultMaxPartySize
     ))
 end
@@ -115,7 +115,7 @@ local function update_game_user_settings(context, phase)
     context.MaxGroupSize = MAX_PLAYERS
     if previous ~= context.MaxGroupSize then
         print(string.format(
-            "[MorePlayers] Online party maximum phase=%s group_size=%s->%s\n",
+            "[MorePlayersPlus] Online party maximum phase=%s group_size=%s->%s\n",
             phase,
             tostring(previous),
             tostring(context.MaxGroupSize)
@@ -129,7 +129,7 @@ local function update_all_game_user_settings(phase)
         local ok, update_error = pcall(update_game_user_settings, settings, phase)
         if not ok then
             print(string.format(
-                "[MorePlayers] Unable to update online party maximum phase=%s error=%s\n",
+                "[MorePlayersPlus] Unable to update online party maximum phase=%s error=%s\n",
                 phase,
                 tostring(update_error)
             ))
@@ -141,7 +141,7 @@ local function update_lobby_beacon_state(context, phase)
     local previous = context.MaxPlayers
     context.MaxPlayers = MAX_PLAYERS
     print(string.format(
-        "[MorePlayers] Lobby beacon limit phase=%s players=%s->%d\n",
+        "[MorePlayersPlus] Lobby beacon limit phase=%s players=%s->%d\n",
         phase,
         tostring(previous),
         context.MaxPlayers
@@ -156,7 +156,7 @@ local function update_party_beacon_state(context, phase)
         context.NumPlayersPerTeam = MAX_PLAYERS
     end
     print(string.format(
-        "[MorePlayers] Party beacon limits phase=%s reservations=%s->%d team_size=%s->%s consumed=%s\n",
+        "[MorePlayersPlus] Party beacon limits phase=%s reservations=%s->%d team_size=%s->%s consumed=%s\n",
         phase,
         tostring(previous_reservations),
         context.MaxReservations,
@@ -173,14 +173,14 @@ local function schedule_beacon_recheck(context, label, updater)
                 return context:IsValid()
             end)
             if not valid_ok or not valid then
-                print(string.format("[MorePlayers] %s beacon recheck skipped: object unavailable\n", label))
+                print(string.format("[MorePlayersPlus] %s beacon recheck skipped: object unavailable\n", label))
                 return
             end
 
             local update_ok, update_error = pcall(updater, context, "recheck")
             if not update_ok then
                 print(string.format(
-                    "[MorePlayers] Unable to update %s beacon during recheck: %s\n",
+                    "[MorePlayersPlus] Unable to update %s beacon during recheck: %s\n",
                     label,
                     tostring(update_error)
                 ))
@@ -198,12 +198,12 @@ local function try_update_default_social_settings()
         local update_ok, update_error = pcall(update_social_settings, context)
         if not update_ok then
             print(string.format(
-                "[MorePlayers] Unable to update default SocialSettings: %s\n",
+                "[MorePlayersPlus] Unable to update default SocialSettings: %s\n",
                 tostring(update_error)
             ))
         end
     else
-        print("[MorePlayers] Default SocialSettings object not found\n")
+        print("[MorePlayersPlus] Default SocialSettings object not found\n")
     end
 end
 
@@ -291,7 +291,7 @@ end
 local function log_join_event(event, fields)
     JOIN_DIAGNOSTIC_SEQUENCE = JOIN_DIAGNOSTIC_SEQUENCE + 1
     local message = string.format(
-        "[MorePlayers] Join diagnostic sequence=%d event=%s",
+        "[MorePlayersPlus] Join diagnostic sequence=%d event=%s",
         JOIN_DIAGNOSTIC_SEQUENCE,
         event
     )
@@ -306,10 +306,10 @@ local function register_join_hook(path, event, callback)
         RegisterHook(path, callback)
     end)
     if ok then
-        print(string.format("[MorePlayers] Join diagnostic hook ready: %s\n", event))
+        print(string.format("[MorePlayersPlus] Join diagnostic hook ready: %s\n", event))
     else
         print(string.format(
-            "[MorePlayers] Join diagnostic hook unavailable: %s error=%s\n",
+            "[MorePlayersPlus] Join diagnostic hook unavailable: %s error=%s\n",
             event,
             tostring(hook_error)
         ))
@@ -596,7 +596,7 @@ local function restore_party_invite_controls(context, player_array_size, is_play
             probe = probe_ok and probe_result or ("error " .. tostring(probe_result))
         end
         print(string.format(
-            "[MorePlayers] Party invite controls first call players=%s (%s) host=%s (%s) probe=%s\n",
+            "[MorePlayersPlus] Party invite controls first call players=%s (%s) host=%s (%s) probe=%s\n",
             tostring(size),
             type(size),
             tostring(host),
@@ -610,7 +610,7 @@ local function restore_party_invite_controls(context, player_array_size, is_play
 
     local ok, result = pcall(show_party_invite_controls, unwrap_parameter(context))
     print(string.format(
-        "[MorePlayers] Party invite controls players=%d limit=%d result=%s\n",
+        "[MorePlayersPlus] Party invite controls players=%d limit=%d result=%s\n",
         size,
         MAX_PLAYERS,
         ok and result or ("error " .. tostring(result))
@@ -622,7 +622,7 @@ ExecuteInGameThread(function()
         local load_ok, load_error = pcall(LoadAsset, PARTY_WIDGET_CLASS)
         if not load_ok then
             print(string.format(
-                "[MorePlayers] Unable to load the party widget asset: %s\n",
+                "[MorePlayersPlus] Unable to load the party widget asset: %s\n",
                 tostring(load_error)
             ))
         end
@@ -632,10 +632,10 @@ ExecuteInGameThread(function()
         RegisterHook(PARTY_WIDGET_CLASS .. ":Update Component Visibility", restore_party_invite_controls)
     end)
     if hook_ok then
-        print("[MorePlayers] Party invite controls hook ready\n")
+        print("[MorePlayersPlus] Party invite controls hook ready\n")
     else
         print(string.format(
-            "[MorePlayers] Party invite controls hook unavailable: %s\n",
+            "[MorePlayersPlus] Party invite controls hook unavailable: %s\n",
             tostring(hook_error)
         ))
     end
@@ -652,7 +652,7 @@ if PARTY_UI_DIAGNOSTICS then
 
     if not hook_ok then
         print(string.format(
-            "[MorePlayers] Party UI diagnostic hook unavailable: %s\n",
+            "[MorePlayersPlus] Party UI diagnostic hook unavailable: %s\n",
             tostring(hook_error)
         ))
     end
@@ -661,5 +661,5 @@ if PARTY_UI_DIAGNOSTICS then
         dump_party_ui("F9")
     end)
 
-    print("[MorePlayers] Party UI diagnostics enabled; press F9 for a snapshot\n")
+    print("[MorePlayersPlus] Party UI diagnostics enabled; press F9 for a snapshot\n")
 end

@@ -8,6 +8,14 @@ Player names and online IDs in the excerpts are replaced with labels. The
 complete logs are kept locally in `lode/tmp/five-player-session-20261005/`.
 That folder is not in git.
 
+The session ran before the rename to MorePlayersPlus and before the MinHook
+change. Its logs use the earlier names: the native log
+`MorePlayersSteamLimit.log` with the prefix `[MorePlayersSteamLimit]`, the Lua
+prefix `[MorePlayers]`, and the install folder `Mods\MorePlayers`. The current
+names are `MorePlayersPlus.log`, `[MorePlayersPlus]`, and
+`Mods\MorePlayersPlus`. The current build also logs no `SetLobbyMemberLimit`
+line when both patch groups apply.
+
 ## Build and configuration
 
 | Item | Value |

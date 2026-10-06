@@ -20,23 +20,22 @@ flowchart TD
 ## Startup contract
 
 - `UE4SS.log` contains the configured limit and `Mod loaded`.
-- `MorePlayersSteamLimit.log` contains `Native companion starting`.
-- The native log confirms that EOS capacity hooks are enabled.
+- `MorePlayersPlus.log` contains `Native companion starting`.
 - The native log contains `Session capacity patch applied at 4 sites`.
-- The native log contains `Full-party threshold patch applied at 2 sites` and
-  `Full-party hook not installed`. If the threshold patch does not apply, the
-  log confirms that the full-party fallback hook is enabled.
+- The native log contains `Full-party threshold patch applied at 2 sites`,
+  `MinHook not activated`, and `Steam rich presence observer ready`.
+- If a patch group does not apply, the native log confirms that the fallback
+  Steam, full-party, and EOS hooks are enabled.
 - `UE4SS.log` contains `Party invite controls hook ready`.
 - `build signature mismatch` means the DLL left the full-party hook disabled,
   or changed no instruction in that patch group.
 
 ## Session contract
 
-- EOS advertises `NumPublicConnections` with the configured limit.
-- Steam receives `SetLobbyMemberLimit` with the configured limit.
-- `SetLobbyMemberLimit result=1` indicates success.
-- Steam messages appear only after the host creates a game session.
-- Repeated original-limit replacements are expected session updates.
+- `Steam rich presence keys=...` records each change of the host's own Steam
+  rich presence, about every 10 seconds at most.
+- In the fallback, EOS and Steam log their limit replacements, and
+  `SetLobbyMemberLimit result=1` indicates success.
 - With the threshold patch, no `Suppressed UWFGameInstance::UpdateHostSessionFullParty`
   line appears. That line appears only with the fallback hook.
 - `Party invite controls players=N limit=M result=shown` confirms that the host
@@ -72,12 +71,12 @@ UE4SS timestamp.
 ## Example
 
 ```text
-[MorePlayersSteamLimit] EOS advertised NumPublicConnections 25 -> 25
-[MorePlayersSteamLimit] SetLobbyMemberLimit result=1
-[MorePlayers] Party invite controls players=3 limit=25 result=shown
-[MorePlayers] Join diagnostic sequence=3 event=session-settings-publication max_group_size=25
-[MorePlayers] Join diagnostic sequence=4 event=client-loading-complete player=...
-[MorePlayers] Join diagnostic sequence=5 event=player-count-changed count=4
+[MorePlayersPlus] EOS advertised NumPublicConnections 25 -> 25
+[MorePlayersPlus] SetLobbyMemberLimit result=1
+[MorePlayersPlus] Party invite controls players=3 limit=25 result=shown
+[MorePlayersPlus] Join diagnostic sequence=3 event=session-settings-publication max_group_size=25
+[MorePlayersPlus] Join diagnostic sequence=4 event=client-loading-complete player=...
+[MorePlayersPlus] Join diagnostic sequence=5 event=player-count-changed count=4
 ```
 
 ## Crash evidence

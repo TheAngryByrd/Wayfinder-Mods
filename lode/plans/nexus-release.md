@@ -1,6 +1,6 @@
 # Nexus Mods release plan
 
-The first Nexus Mods release contains MorePlayers and SkipStartupWarnings.
+The first Nexus Mods release contains MorePlayersPlus and SkipStartupWarnings.
 Loadouts is excluded because it is nonfunctional. MoreDrops is deferred.
 The user uploads and publishes. The repository prepares packages and page
 text.
@@ -20,11 +20,11 @@ flowchart TD
 
 1. Port the config-parser fix onto `master`. The native and Lua parsers then
    accept the same `MaxPlayers` lines, and the last valid line wins.
-2. Remove the MinHook startup activation from the normal MorePlayers path.
+2. Remove the MinHook startup activation from the normal MorePlayersPlus path.
    See [Startup crash fix](#startup-crash-fix).
 3. Test a solo start, a Steam friends list `Join Game`, and a Steam overlay
    invite with a real friend.
-4. Build both packages with `build.ps1 -Mod MorePlayers,SkipStartupWarnings`
+4. Build both packages with `build.ps1 -Mod MorePlayersPlus,SkipStartupWarnings`
    in a clean worktree of `master`.
 5. Inspect each ZIP:
    - no `source` folder and no Loadouts files;

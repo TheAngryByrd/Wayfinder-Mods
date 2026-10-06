@@ -106,8 +106,8 @@ The video replacer controls logo videos. SkipStartupWarnings controls two UMG wa
 SkipStartupWarnings does not disable `WFAutoSaveOverlay`. Wayfinder can still show
 its normal autosave indicator during gameplay.
 
-SkipStartupWarnings is compatible with the current MorePlayers release. Both
-mods load through their `enabled.txt` files. MorePlayers defers its native hook
+SkipStartupWarnings is compatible with the current MorePlayersPlus release. Both
+mods load through their `enabled.txt` files. MorePlayersPlus defers its native hook
 activation until the UE4SS event loop starts, so it does not block this mod.
 No `mods.txt` entry is required.
 
@@ -122,7 +122,7 @@ load the expected Blueprint function.
 Wayfinder's menu service.
 
 If UE4SS does not report `Starting Lua mod 'SkipStartupWarnings'`, confirm that
-`enabled.txt` exists and update MorePlayers if an older release is installed.
+`enabled.txt` exists and update MorePlayersPlus if an older release is installed.
 
 Remove the mod's `enabled.txt` file to disable the mod without deleting its configuration.
 

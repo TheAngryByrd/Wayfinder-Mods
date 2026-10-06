@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../schemas/mod.schema.json",
+  "id": "MorePlayersPlus",
+  "displayName": "Wayfinder MorePlayersPlus",
+  "archiveName": "Wayfinder-MorePlayersPlus-NexusMods.zip",
+  "includeWayfinderSignature": true,
+  "native": {
+    "target": "MorePlayersPlus"
+  }
+}

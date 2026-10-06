@@ -7,7 +7,7 @@ Select a mod to see its installation, configuration, build, and troubleshooting 
 
 <!-- toc:start -->
 - [Mods](#mods)
-  - [MorePlayers](#moreplayers)
+  - [MorePlayersPlus](#moreplayersplus)
   - [MoreDrops](#moredrops)
   - [Loadouts](#loadouts)
   - [SkipStartupWarnings](#skipstartupwarnings)
@@ -19,16 +19,16 @@ Select a mod to see its installation, configuration, build, and troubleshooting 
 
 ## Mods
 
-### MorePlayers
+### MorePlayersPlus
 
-MorePlayers lets a Wayfinder host play with more than three people.
+MorePlayersPlus lets a Wayfinder host play with more than three people.
 The host can set the maximum player count from 3 through 25.
 Joining players do not need the mod.
 Wayfinder automatically scales the game for the number of connected players.
 
 The mod keeps Steam invitations and public joining available beyond the normal three-player limit.
 
-See the [MorePlayers documentation](src/mods/MorePlayers/README.md).
+See the [MorePlayersPlus documentation](src/mods/MorePlayersPlus/README.md).
 
 ### MoreDrops
 
@@ -60,7 +60,7 @@ See the [SkipStartupWarnings documentation](src/mods/SkipStartupWarnings/README.
 ## Add another mod
 
 1. Create `src\mods\<ModName>`.
-2. Copy the [MorePlayers manifest](src/mods/MorePlayers/mod.json) to the new directory.
+2. Copy the [MorePlayersPlus manifest](src/mods/MorePlayersPlus/mod.json) to the new directory.
 3. Set the new mod identity and archive name in `mod.json`.
 4. Create `src\mods\<ModName>\README.md` with the complete mod documentation.
 5. Put installable mod files in `src\mods\<ModName>\content`.
@@ -103,7 +103,7 @@ Build one mod:
 Build multiple selected mods:
 
 ```powershell
-.\build.ps1 -Mod MorePlayers,AnotherMod
+.\build.ps1 -Mod MorePlayersPlus,AnotherMod
 ```
 
 List discovered mods without building them:

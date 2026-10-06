@@ -1,4 +1,4 @@
-# Wayfinder MorePlayers
+# Wayfinder MorePlayersPlus
 
 This mod lets a Wayfinder host play with more than three people. Set the maximum
 player count from 3 through 25. Only the host needs the mod. Wayfinder
@@ -21,7 +21,7 @@ files.
 - [Configuration](#configuration)
 - [Install](#install)
   - [Install UE4SS 3.0.1](#install-ue4ss-301)
-  - [Install MorePlayers](#install-moreplayers)
+  - [Install MorePlayersPlus](#install-moreplayersplus)
 - [Confirm the mod is working](#confirm-the-mod-is-working)
   - [Troubleshooting](#troubleshooting)
 - [Compatibility](#compatibility)
@@ -35,7 +35,7 @@ files.
 Close Wayfinder. Then edit the installed configuration file:
 
 ```text
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\config.ini
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\config.ini
 ```
 
 Set the required values:
@@ -63,7 +63,7 @@ The Lua script and native DLL use the same rule for each `MaxPlayers` line:
   nearest supported value.
 - If more than one line is valid, the last valid line sets the limit.
 - If no line is valid, the mod uses 25. `UE4SS.log` and
-  `MorePlayersSteamLimit.log` then show a `Config missing/invalid` message.
+  `MorePlayersPlus.log` then show a `Config missing/invalid` message.
 
 This example sets the limit to 12 in the Lua script and native DLL:
 
@@ -89,18 +89,18 @@ This package does not contain UE4SS. Install the compatible Wayfinder UE4SS
 4. Open `Atlas\Binaries\Win64`.
 5. Remove an old `xinput1_3.dll` file from this directory.
 6. Extract the UE4SS archive contents into `Atlas\Binaries\Win64`.
-7. Do not start Wayfinder until you install MorePlayers.
+7. Do not start Wayfinder until you install MorePlayersPlus.
 
-The MorePlayers archive installs this custom signature at:
+The MorePlayersPlus archive installs this custom signature at:
 
 ```text
 Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
 ```
 
-The MorePlayers archive includes this custom signature. UE4SS uses it to locate
+The MorePlayersPlus archive includes this custom signature. UE4SS uses it to locate
 the global object array. Lua mods cannot load when this lookup fails.
 
-After you install MorePlayers, the directory must contain these items:
+After you install MorePlayersPlus, the directory must contain these items:
 
 ```text
 Wayfinder\Atlas\Binaries\Win64\dwmapi.dll
@@ -114,27 +114,32 @@ See the [official UE4SS installation guide](https://docs.ue4ss.com/installation-
 and [UE4SS 3.0.1 release notes](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1)
 for additional information.
 
-### Install MorePlayers
+### Install MorePlayersPlus
 
 1. Close Wayfinder.
-2. Extract the MorePlayers archive into the Wayfinder installation directory.
-3. Permit file replacement when Windows asks for confirmation.
+2. If you installed an earlier MorePlayers build, delete this folder:
+   `Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers`. Two copies apply their
+   changes twice.
+3. Do not install FuniWF's More Players at the same time. Both mods change the
+   same session limits.
+4. Extract the MorePlayersPlus archive into the Wayfinder installation directory.
+5. Permit file replacement when Windows asks for confirmation.
 
 Confirm that these files exist:
 
 ```text
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\enabled.txt
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\config.ini
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\Scripts\main.lua
-Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\enabled.txt
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\config.ini
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\Scripts\main.lua
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\dlls\main.dll
 ```
 
-Start Wayfinder. Confirm that `UE4SS.log` contains `[MorePlayers] Mod loaded`.
+Start Wayfinder. Confirm that `UE4SS.log` contains `[MorePlayersPlus] Mod loaded`.
 
 The native diagnostic log is written to:
 
 ```text
-Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
+Wayfinder\Atlas\Binaries\Win64\MorePlayersPlus.log
 ```
 
 ## Confirm the mod is working
@@ -148,49 +153,45 @@ Wayfinder\Atlas\Binaries\Win64\UE4SS.log
 Confirm that the file contains messages similar to these:
 
 ```text
-[MorePlayers] Config MaxPlayers=25
-[MorePlayers] Mod loaded
-[MorePlayers] Online party maximum phase=created group_size=3.0->25.0
-[MorePlayers] Party invite controls hook ready
-[MorePlayers] Engine limits: players=25 party=25
+[MorePlayersPlus] Config MaxPlayers=25
+[MorePlayersPlus] Mod loaded
+[MorePlayersPlus] Online party maximum phase=created group_size=3.0->25.0
+[MorePlayersPlus] Party invite controls hook ready
+[MorePlayersPlus] Engine limits: players=25 party=25
 ```
 
 When you open the party page in the pause menu, `UE4SS.log` records one line:
 
 ```text
-[MorePlayers] Party invite controls first call players=1 (number) host=true (boolean) probe=shown
+[MorePlayersPlus] Party invite controls first call players=1 (number) host=true (boolean) probe=shown
 ```
 
 Open this file:
 
 ```text
-Wayfinder\Atlas\Binaries\Win64\MorePlayersSteamLimit.log
+Wayfinder\Atlas\Binaries\Win64\MorePlayersPlus.log
 ```
 
 Confirm that the file contains these startup messages:
 
 ```text
-[MorePlayersSteamLimit] Native companion starting
-[MorePlayersSteamLimit] Config MaxPlayers=25
-[MorePlayersSteamLimit] Session capacity patch applied at 4 sites
-[MorePlayersSteamLimit] Full-party threshold patch applied at 2 sites
-[MorePlayersSteamLimit] Full-party hook not installed: the full-party threshold is the configured limit
-[MorePlayersSteamLimit] Unreal initialization complete; EOS readiness checks delayed 5000 ms
-[MorePlayersSteamLimit] EOS hooks installed; configured capacity overrides enabled
+[MorePlayersPlus] Native companion starting
+[MorePlayersPlus] Config MaxPlayers=25
+[MorePlayersPlus] Session capacity patch applied at 4 sites
+[MorePlayersPlus] Full-party threshold patch applied at 2 sites
+[MorePlayersPlus] MinHook not activated: both instruction patch groups apply
+[MorePlayersPlus] Steam rich presence observer ready
 ```
 
-Host a public or invite-only game. Confirm that the native log contains these
-session messages:
+When both patch groups apply, Wayfinder itself submits the configured limit to
+EOS and Steam. The mod then installs no hook.
+
+Host a public or invite-only game. The native log records your own Steam rich
+presence each time it changes:
 
 ```text
-[MorePlayersSteamLimit] EOS advertised NumPublicConnections 25 -> 25
-[MorePlayersSteamLimit] SetLobbyMemberLimit 25 -> 25 lobby=...
-[MorePlayersSteamLimit] SetLobbyMemberLimit result=1
+[MorePlayersPlus] Steam rich presence keys=... connect=... steam_player_group=...
 ```
-
-The first value is the limit that Wayfinder submits. The second value is the
-limit that the mod sends. Both values are equal when the session capacity
-patch is active.
 
 `UE4SS.log` should also contain `session-settings-publication` or
 `party-update-publication` with `max_group_size=25`. This confirms that the
@@ -203,44 +204,44 @@ party page shows `+Party Member` and `Code` to the host. `UE4SS.log` then
 contains:
 
 ```text
-[MorePlayers] Party invite controls players=3 limit=25 result=shown
+[MorePlayersPlus] Party invite controls players=3 limit=25 result=shown
 ```
 
-If the native log contains `Full-party threshold patch unavailable`, the mod
-uses its earlier fallback. It suppresses the full publication and writes this
-line after the third player joins:
+If the native log contains `patch unavailable`, the Wayfinder executable has
+changed. The mod then uses its fallback hooks. They raise the EOS and Steam
+limits, and they suppress the full publication after the third player joins:
 
 ```text
-[MorePlayersSteamLimit] Suppressed UWFGameInstance::UpdateHostSessionFullParty requested=...
+[MorePlayersPlus] Hooked ISteamMatchmaking009::SetLobbyMemberLimit[v31]
+[MorePlayersPlus] SetLobbyMemberLimit 3 -> 25 lobby=...
+[MorePlayersPlus] Suppressed UWFGameInstance::UpdateHostSessionFullParty requested=...
 ```
 
-Repeated `25 -> 25` messages are normal. Wayfinder submits the limit each time
-it updates the session. A `3 -> 25` message shows that the session capacity
-patch was not applied. The hook then raises each submitted value, but Discord
-joins stop at 3 players.
+In the fallback, Discord joins stop at 3 players.
 
 When a player joins or disconnects, `UE4SS.log` records ordered join events.
 Search for `Join diagnostic`. A kick entry includes the reason supplied by
 Wayfinder when the host observes the kick call.
 
 ```text
-[MorePlayers] Join diagnostic sequence=... event=post-login ...
-[MorePlayers] Join diagnostic sequence=... event=client-loading-complete ...
-[MorePlayers] Join diagnostic sequence=... event=client-kicked reason=...
-[MorePlayers] Join diagnostic sequence=... event=lobby-beacon-client-kicked reason=...
-[MorePlayers] Join diagnostic sequence=... event=party-reservation-response result=...
-[MorePlayers] Join diagnostic sequence=... event=logout ...
+[MorePlayersPlus] Join diagnostic sequence=... event=post-login ...
+[MorePlayersPlus] Join diagnostic sequence=... event=client-loading-complete ...
+[MorePlayersPlus] Join diagnostic sequence=... event=client-kicked reason=...
+[MorePlayersPlus] Join diagnostic sequence=... event=lobby-beacon-client-kicked reason=...
+[MorePlayersPlus] Join diagnostic sequence=... event=party-reservation-response result=...
+[MorePlayersPlus] Join diagnostic sequence=... event=logout ...
 ```
 
 ### Troubleshooting
 
 - If `UE4SS.log` does not exist, check the UE4SS installation and custom signature.
-- If `Mod loaded` is absent, check the `MorePlayers` directory and `enabled.txt`.
-- If the native log does not exist, check `MorePlayers\dlls\main.dll`.
+- If `Mod loaded` is absent, check the `MorePlayersPlus` directory and `enabled.txt`.
+- If the native log does not exist, check `MorePlayersPlus\dlls\main.dll`.
 - If `build signature mismatch` appears, the Wayfinder executable changed. The
   mod then keeps the original session capacity instructions.
-- If Steam messages are absent, host a game before you check the log.
-- If `SetLobbyMemberLimit result=0` appears, Steam rejected the limit update.
+- If Steam rich presence lines are absent, host a game and wait 10 seconds.
+- If `SetLobbyMemberLimit result=0` appears in the fallback, Steam rejected the
+  limit update.
 - Press F9 to record a party UI snapshot when UI diagnostics are enabled.
 - For a client-only disconnect, also collect that client's Wayfinder logs.
 
@@ -253,35 +254,35 @@ For a Wayfinder crash, collect these files:
 
 ## Compatibility
 
-MorePlayers does not block later UE4SS mods that use `enabled.txt`. Its native
-Steam and Wayfinder hooks activate after UE4SS finishes mod discovery and starts
-the event loop. The native hooks activate as one MinHook batch. The EOS hook
-batch waits five seconds after Unreal initialization so it does not patch EOS
-during its initial startup calls.
+MorePlayersPlus does not block later UE4SS mods that use `enabled.txt`. Its
+native companion starts after UE4SS finishes mod discovery and starts the event
+loop. When both patch groups apply, it activates no hook. In the fallback, the
+Steam and Wayfinder hooks activate as one MinHook batch, and the EOS hook batch
+waits five seconds after Unreal initialization.
 
-SkipStartupWarnings can load after MorePlayers without an explicit `mods.txt`
+SkipStartupWarnings can load after MorePlayersPlus without an explicit `mods.txt`
 entry. Keep each mod's `enabled.txt` file installed.
 
 ## Build
 
-Run this command from the repository root to build MorePlayers.
+Run this command from the repository root to build MorePlayersPlus.
 The build script also updates each generated table of contents.
 
 To change the default configuration in a new distribution, edit:
 
 ```text
-src\mods\MorePlayers\content\config.ini
+src\mods\MorePlayersPlus\content\config.ini
 ```
 
 ```powershell
-.\build.ps1 -Mod MorePlayers
+.\build.ps1 -Mod MorePlayersPlus
 ```
 
 The script creates these outputs:
 
 ```text
-dist\NexusMods\MorePlayers\
-dist\Wayfinder-MorePlayers-NexusMods.zip
+dist\NexusMods\MorePlayersPlus\
+dist\Wayfinder-MorePlayersPlus-NexusMods.zip
 ```
 
 Use `-SkipNativeBuild` to reuse the current compiled DLL. Use `-NoArchive` to
@@ -289,19 +290,12 @@ generate only the unpacked distribution.
 
 Use `-ListMods` to show all discovered mod manifests.
 
-See `src\mods\MorePlayers\native\README.md` for native build details.
+See `src\mods\MorePlayersPlus\native\README.md` for native build details.
 
 ## Technical notes
 
-Wayfinder ships Steamworks SDK v157 and uses `SteamMatchMaking009` through the
-C++ interface. The native companion hooks the runtime-verified
-`ISteamMatchmaking009::SetLobbyMemberLimit` slot and avoids unverified vtable
-methods.
-
-The native companion raises the host's EOS 1.16.3 session capacity and
-advertised `NumPublicConnections` value. EOS lobby/session search hooks remain
-read-only diagnostics; client search filters and lobby-browser UI are not
-modified, allowing joining clients to remain unmodded.
+Only the host needs MorePlayersPlus. Client search filters and the session
+browser are not modified, so joining clients can stay unmodded.
 
 Wayfinder writes the constant 3 as the session capacity each time the host
 creates or updates its session. The native companion changes these four
@@ -319,8 +313,14 @@ The pause menu party page hides `+Party Member` and `Code` at 3 players. The Lua
 script shows them again for the host while the party has fewer than
 `MaxPlayers` players. `+Party Member` opens the Steam overlay invite.
 
+When a game update changes the patched instructions, the native companion uses
+its fallback hooks. Wayfinder ships Steamworks SDK v157. The fallback hooks the
+runtime-verified `ISteamMatchmaking009::SetLobbyMemberLimit` slot and the EOS
+1.16.3 session capacity calls, and it suppresses
+`UWFGameInstance::UpdateHostSessionFullParty`.
+
 ## Attribution
 
-The Lua session-limit approach is based on the More Players mod by FuniWF. This
-repository contains a local compatibility implementation and native Steam lobby
-companion.
+The Lua session-limit approach is based on the More Players mod by FuniWF and
+is used with FuniWF's permission. MorePlayersPlus adds the native companion,
+the instruction patches, and the party controls fix.

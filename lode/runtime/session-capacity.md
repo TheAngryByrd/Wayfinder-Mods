@@ -59,33 +59,34 @@ flowchart TD
   changes.
 - A patch site matches when its instruction prefix is correct and its
   immediate value is from 3 through 25.
-- C++ replaces EOS capacity values lower than the configured limit.
-- C++ replaces Steam lobby limit requests lower than the configured limit.
-- C++ suppresses `UWFGameInstance::UpdateHostSessionFullParty` only when the
-  full-party threshold patch does not apply. Only the two selectors lead to
-  that function.
+- When both patch groups apply, C++ initializes no MinHook and installs no
+  hook. Wayfinder itself then submits the configured limit to EOS and Steam.
+  A Steam rich presence observer logs the local user's own rich presence keys
+  each time they change.
+- In the fallback, when a patch group does not apply, C++ replaces EOS capacity
+  values and Steam lobby limit requests lower than the configured limit, and
+  it suppresses `UWFGameInstance::UpdateHostSessionFullParty`. Only the two
+  selectors lead to that function.
 - Lua shows the pause menu `+Party Member` and `Code` controls for the host
   from 3 to `MaxPlayers - 1` players. See [Party UI](party-ui.md).
 - C++ schedules native installation during `on_program_start` and runs it from
   the first `on_update` call after UE4SS starts its event loop.
-- C++ applies both instruction groups before it creates hooks. It applies the
-  threshold group only after the session capacity group applies. Otherwise it
-  keeps the original threshold and installs the suppression hook.
-- C++ creates the Steam hook, and the full-party fallback hook when necessary,
-  while disabled. It queues them and activates them with one `MH_ApplyQueued`
-  call.
-- EOS hook installation waits five seconds after Unreal initialization. This
-  avoids patching EOS during its initial startup calls.
+- C++ applies both instruction groups first. It applies the threshold group
+  only after the session capacity group applies. Otherwise it keeps the
+  original threshold and uses the fallback hooks.
+- The fallback creates the Steam hook and the full-party hook while disabled.
+  It queues them and activates them with one `MH_ApplyQueued` call.
+- The fallback EOS hook installation waits five seconds after Unreal
+  initialization. This avoids patching EOS during its initial startup calls.
 - Native startup must return before UE4SS continues `enabled.txt` discovery.
 - The supported function starts at `Wayfinder.exe + 0x164D770`.
 - Its validator matches the complete 24-byte prologue, beginning with
   `48 89 5C 24 10 48 89 74 24 18`.
 - The full-party fallback hook validates the Wayfinder function prologue before
   it is enabled. A game update with different code leaves the hook disabled.
-- The original API receives the modified value and must return success.
-- With the instruction patch active, hook messages show
-  `configured limit -> configured limit`. A `3 -> configured limit` message
-  shows that the instruction patch is not active.
+- In the fallback, the original API receives the modified value and must
+  return success. A `3 -> configured limit` message shows that the session
+  capacity patch is not active.
 
 ## Native hook maintenance
 
@@ -108,19 +109,18 @@ bytes and offsets inside the function. Keep the validator enabled after every
 game update.
 
 The complete maintenance procedure is in
-[`src/mods/MorePlayers/native/README.md`](../../src/mods/MorePlayers/native/README.md#updating-the-full-party-hook).
+[`src/mods/MorePlayersPlus/native/README.md`](../../src/mods/MorePlayersPlus/native/README.md#updating-the-full-party-hook).
 
 ## Example log
 
 ```text
-[MorePlayersSteamLimit] Session capacity patch applied at 4 sites
-[MorePlayersSteamLimit] Full-party threshold patch applied at 2 sites
-[MorePlayersSteamLimit] Full-party hook not installed: the full-party threshold is the configured limit
-[MorePlayersSteamLimit] SetLobbyMemberLimit 25 -> 25 lobby=...
-[MorePlayersSteamLimit] SetLobbyMemberLimit result=1
-[MorePlayers] Party invite controls hook ready
-[MorePlayers] Online party maximum phase=session-publication group_size=3.0->25.0
-[MorePlayers] Party beacon limits phase=recheck reservations=3->25 team_size=3->25 consumed=3
+[MorePlayersPlus] Session capacity patch applied at 4 sites
+[MorePlayersPlus] Full-party threshold patch applied at 2 sites
+[MorePlayersPlus] MinHook not activated: both instruction patch groups apply
+[MorePlayersPlus] Steam rich presence observer ready
+[MorePlayersPlus] Party invite controls hook ready
+[MorePlayersPlus] Online party maximum phase=session-publication group_size=3.0->25.0
+[MorePlayersPlus] Party beacon limits phase=recheck reservations=3->25 team_size=3->25 consumed=3
 ```
 
 ```cpp
@@ -142,8 +142,8 @@ A solo host run confirms the instruction patch. The host session dump shows
 Steam hooks log `25 -> 25`.
 
 ```text
-[MorePlayersSteamLimit] Session capacity patch applied at 4 sites
-[MorePlayersSteamLimit] EOS Sessions_CreateSessionModification ... max_players=25 -> 25
+[MorePlayersPlus] Session capacity patch applied at 4 sites
+[MorePlayersPlus] EOS Sessions_CreateSessionModification ... max_players=25 -> 25
 LogOnlineSession: Verbose: OSS: 	NumPublicConnections: 25
 ```
 
@@ -164,11 +164,9 @@ full publication. The native log shows 123 EOS session updates with no failure
 and no failed Steam lobby limit. `UE4SS.log` shows no kick, network error, or
 travel error.
 
-```text
-[MorePlayersSteamLimit] Full-party threshold patch applied at 2 sites
-[MorePlayersSteamLimit] Full-party hook not installed: the full-party threshold is the configured limit
-[MorePlayers] Party invite controls first call players=1 (number) host=true (boolean)
-```
+These runs used the earlier name MorePlayers and the build that still
+installed the Steam and EOS hooks. Their log excerpts are in
+[Five-player session evidence](five-player-session.md).
 
 A map travel with four players to Skylight succeeded. Each client swapped its
 player state (`PlayerArray.Num()` 5, then 4 in the same 2 ms), and all four

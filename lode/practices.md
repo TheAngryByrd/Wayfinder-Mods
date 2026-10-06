@@ -34,7 +34,7 @@ flowchart LR
 ## Build example
 
 ```powershell
-.\build.ps1 -Mod MorePlayers
+.\build.ps1 -Mod MorePlayersPlus
 ```
 
 ## Documentation example

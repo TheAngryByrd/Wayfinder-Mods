@@ -76,8 +76,8 @@ settings and keep the value.
 The patch also gives the Steam lobby the correct limit at creation.
 `CreateLobby` has no hook, so it received 3 before the patch.
 
-The EOS and Steam hooks stay active. When Wayfinder submits `MaxPlayers`, the
-hooks send the same value.
+When both patch groups apply, the mod installs no EOS or Steam hook. Wayfinder
+itself then submits `MaxPlayers` to EOS and Steam.
 
 ## Rich presence joinability
 

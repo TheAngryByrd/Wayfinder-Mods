@@ -1,28 +1,33 @@
 # Building `main.dll`
 
 This native companion targets 64-bit Windows and the UE4SS 3.0.1 C++ mod ABI.
+It changes four session-capacity instructions and two full-party threshold
+instructions in `Wayfinder.exe`. See [Instruction patches](#instruction-patches).
+
+When both patch groups apply, the companion activates no hook and does not
+initialize MinHook. A startup crash dump showed a null call in
+`chrome_elf.dll` under MinHook's thread freeze, and the hooks only passed the
+configured limit through. The companion then logs the local user's own Steam
+rich presence through the Steam flat API each time it changes.
+
+When a patch group does not apply, the companion uses its fallback hooks.
 Wayfinder ships Steamworks SDK v157 and requests `SteamMatchMaking009` through
 `SteamInternal_ContextInit`. It does not import the flat matchmaking functions.
-This companion therefore hooks only the runtime-proven method:
+The fallback therefore hooks only the runtime-proven methods:
 
 - `ISteamMatchmaking009::SetLobbyMemberLimit` (vtable slot 31)
 - `UWFGameInstance::UpdateHostSessionFullParty` for the supported Wayfinder
-  executable build, only when the full-party threshold patch is not applied
+  executable build
+- the EOS session capacity calls, five seconds after Unreal initialization
 
-The companion also changes four session-capacity instructions and two
-full-party threshold instructions in `Wayfinder.exe`. See
-[Instruction patches](#instruction-patches).
+The crash-run trace showed the Steam slot receiving `(this, lobby, 3)`,
+returning success, and reporting a resulting limit of 25. No other vtable slots
+or getters are called. The fallback raises the requested Steam lobby capacity
+and publishes a `+connect_lobby` Steam rich presence value. It does not open
+the Steam overlay automatically.
 
-The crash-run trace showed this slot receiving `(this, lobby, 3)`, returning
-success, and reporting a resulting limit of 25. No other vtable slots or getters
-are called. The captured lobby ID is used to publish Steam `connect` rich
-presence while leaving the invite dialog under user control.
-
-The hook raises the requested Steam lobby capacity to the value in
-`../content/config.ini` and publishes a `+connect_lobby` Steam Rich Presence value.
-It does not open the Steam overlay automatically. Both
-`../content/Scripts/main.lua` and the compiled DLL read the same `MaxPlayers`
-setting.
+Both `../content/Scripts/main.lua` and the compiled DLL read the same
+`MaxPlayers` setting.
 
 ## Contents
 
@@ -58,7 +63,7 @@ Use the root build script for a complete Nexus Mods distribution. From the
 repository root, run:
 
 ```powershell
-.\build.ps1 -Mod MorePlayers
+.\build.ps1 -Mod MorePlayersPlus
 ```
 
 This command compiles the DLL, stages all required files, and creates the Nexus
@@ -69,9 +74,9 @@ Run this command from the repository root:
 
 ```powershell
 .\scripts\build-native.ps1 `
-    -SourceDirectory .\src\mods\MorePlayers\native `
-    -BuildDirectory .\build\native\MorePlayers `
-    -Target MorePlayersSteamLimit
+    -SourceDirectory .\src\mods\MorePlayersPlus\native `
+    -BuildDirectory .\build\native\MorePlayersPlus `
+    -Target MorePlayersPlus
 ```
 
 The native script configures and compiles an x64 Release build.
@@ -81,20 +86,20 @@ Use `-Configuration Debug` for a debug build.
 The equivalent manual commands are:
 
 ```powershell
-cmake -S src\mods\MorePlayers\native -B build\native\MorePlayers -G "Visual Studio 17 2022" -A x64
-cmake --build build\native\MorePlayers --config Release --target MorePlayersSteamLimit
+cmake -S src\mods\MorePlayersPlus\native -B build\native\MorePlayersPlus -G "Visual Studio 17 2022" -A x64
+cmake --build build\native\MorePlayersPlus --config Release --target MorePlayersPlus
 ```
 
 The output is:
 
 ```text
-build\native\MorePlayers\Release\MorePlayersSteamLimit.dll
+build\native\MorePlayersPlus\Release\MorePlayersPlus.dll
 ```
 
 The root build script copies it to:
 
 ```text
-dist\NexusMods\MorePlayers\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll
+dist\NexusMods\MorePlayersPlus\Atlas\Binaries\Win64\Mods\MorePlayersPlus\dlls\main.dll
 ```
 
 ## Validation
@@ -102,29 +107,31 @@ dist\NexusMods\MorePlayers\Atlas\Binaries\Win64\Mods\MorePlayers\dlls\main.dll
 From a Visual Studio Developer PowerShell:
 
 ```powershell
-dumpbin /headers build\native\MorePlayers\Release\MorePlayersSteamLimit.dll
-dumpbin /exports build\native\MorePlayers\Release\MorePlayersSteamLimit.dll
-dumpbin /dependents build\native\MorePlayers\Release\MorePlayersSteamLimit.dll
+dumpbin /headers build\native\MorePlayersPlus\Release\MorePlayersPlus.dll
+dumpbin /exports build\native\MorePlayersPlus\Release\MorePlayersPlus.dll
+dumpbin /dependents build\native\MorePlayersPlus\Release\MorePlayersPlus.dll
 ```
 
 Confirm that it is x64 and exports both `start_mod` and `uninstall_mod`.
 
-At runtime, inspect `Atlas\Binaries\Win64\MorePlayersSteamLimit.log`. It records
+At runtime, inspect `Atlas\Binaries\Win64\MorePlayersPlus.log`. It records
 hook installation, lobby calls, rich-presence return values, and EOS capacity
 updates.
 
 UE4SS `on_program_start` only schedules native installation. The first
-`on_update` call creates the Steam lobby-limit and Wayfinder full-party hooks
-while they are disabled. It queues both hooks and enables them with one
-`MH_ApplyQueued` call. Keep this event-loop boundary and batch activation when
-you add or change startup hooks. Synchronous startup activation blocks later
+`on_update` call applies the instruction patches. In the fallback, it then
+creates the Steam lobby-limit and Wayfinder full-party hooks while they are
+disabled, queues both hooks, and enables them with one `MH_ApplyQueued` call.
+Keep this event-loop boundary and batch activation when you add or change
+startup hooks. MinHook freezes all threads during `MH_ApplyQueued`, and one
+startup crash occurred in `chrome_elf.dll` during that freeze. Synchronous startup activation blocks later
 `enabled.txt` mods. Concurrent activation can crash while Wayfinder initializes.
 
 ## Updating the full-party hook
 
 The full-party hook is a fallback. The DLL installs it only when the
 [full-party threshold patch](#full-party-threshold-sites) does not apply. With
-the threshold patch active, the log contains `Full-party hook not installed`.
+both patch groups active, the log contains `MinHook not activated`.
 
 The full-party hook is specific to one `Wayfinder.exe` build. A game update can
 move the function, change its instructions, or change its calling convention.
@@ -218,12 +225,12 @@ That offset caused the previous validator failure.
 
 1. Rebuild the native DLL.
 2. Start Wayfinder with the new DLL.
-3. Open `Atlas\Binaries\Win64\MorePlayersSteamLimit.log`.
+3. Open `Atlas\Binaries\Win64\MorePlayersPlus.log`.
 4. Confirm that the log reports the updated RVA.
 5. Confirm that the log contains the successful hook message.
 
 ```text
-[MorePlayersSteamLimit] Hooked UWFGameInstance::UpdateHostSessionFullParty[Wayfinder+0x164D770]
+[MorePlayersPlus] Hooked UWFGameInstance::UpdateHostSessionFullParty[Wayfinder+0x164D770]
 ```
 
 Treat `build signature mismatch` as a failed validation. Do not remove the byte
@@ -280,7 +287,7 @@ the hook as a fallback. Thus a partial match falls back to the earlier tested
 configuration. A skipped threshold group writes this message:
 
 ```text
-[MorePlayersSteamLimit] Full-party threshold patch not attempted: the session capacity patch is not applied
+[MorePlayersPlus] Full-party threshold patch not attempted: the session capacity patch is not applied
 ```
 
 Only these two instructions lead to `UpdateHostSessionFullParty`: a call at
@@ -303,15 +310,15 @@ If a check fails, the DLL changes no site in that group. A signature failure
 writes this message:
 
 ```text
-[MorePlayersSteamLimit] Session capacity patch unavailable: build signature mismatch at ...; no sites changed
+[MorePlayersPlus] Session capacity patch unavailable: build signature mismatch at ...; no sites changed
 ```
 
 Successful patches write these messages:
 
 ```text
-[MorePlayersSteamLimit] Session capacity patch applied at 4 sites
-[MorePlayersSteamLimit] Full-party threshold patch applied at 2 sites
-[MorePlayersSteamLimit] Full-party hook not installed: the full-party threshold is the configured limit
+[MorePlayersPlus] Session capacity patch applied at 4 sites
+[MorePlayersPlus] Full-party threshold patch applied at 2 sites
+[MorePlayersPlus] MinHook not activated: both instruction patch groups apply
 ```
 
 Several sites are on the same memory page (`0x14164D000`). The DLL restores

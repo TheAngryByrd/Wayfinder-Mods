@@ -27,12 +27,12 @@ The build validates required text, Boolean values, identifiers, and archive name
 ```json
 {
   "$schema": "../../../schemas/mod.schema.json",
-  "id": "MorePlayers",
-  "displayName": "Wayfinder MorePlayers",
-  "archiveName": "Wayfinder-MorePlayers-NexusMods.zip",
+  "id": "MorePlayersPlus",
+  "displayName": "Wayfinder MorePlayersPlus",
+  "archiveName": "Wayfinder-MorePlayersPlus-NexusMods.zip",
   "includeWayfinderSignature": true,
   "native": {
-    "target": "MorePlayersSteamLimit"
+    "target": "MorePlayersPlus"
   }
 }
 ```
@@ -129,8 +129,8 @@ Build all discovered mods:
 Build selected mods:
 
 ```powershell
-.\build.ps1 -Mod MorePlayers
-.\build.ps1 -Mod MorePlayers,AnotherMod
+.\build.ps1 -Mod MorePlayersPlus
+.\build.ps1 -Mod MorePlayersPlus,AnotherMod
 ```
 
 List discovered mods:

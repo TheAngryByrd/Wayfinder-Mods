@@ -1,6 +1,6 @@
 # Project summary
 
-This repository is a manifest-based collection of Wayfinder mods. MorePlayers
+This repository is a manifest-based collection of Wayfinder mods. MorePlayersPlus
 raises the configured player limit across Unreal, EOS, and Steam. MoreDrops
 scales loot probability and amount ranges through Wayfinder's central loot
 spawner. MoreDrops also filters configured selected items, disallowed Echo
@@ -18,16 +18,16 @@ owns its detailed guide.
 
 ```mermaid
 flowchart LR
-    Catalog[Root README] --> Players[MorePlayers README]
+    Catalog[Root README] --> Players[MorePlayersPlus README]
     Catalog --> Drops[MoreDrops README]
     Catalog --> Loadouts[Loadouts README]
     Catalog --> Startup[SkipStartupWarnings README]
     Manifest[mod.json] --> Build[Root build]
-    Build --> PlayersConfig[MorePlayers config]
+    Build --> PlayersConfig[MorePlayersPlus config]
     Build --> DropsConfig[MoreDrops config]
     Build --> LoadoutsConfig[Loadouts config]
     Build --> StartupConfig[SkipStartupWarnings config]
-    PlayersConfig --> PlayerNative[MorePlayers native DLL]
+    PlayersConfig --> PlayerNative[MorePlayersPlus native DLL]
     PlayersConfig --> SessionLua[Session Lua]
     DropsConfig --> LootNative[MoreDrops native DLL]
     DropsConfig --> ConfigReload[Runtime config reload]
@@ -63,15 +63,19 @@ flowchart LR
 - `MaxPlayers` supports values from 3 through 25.
 - The host installs the mod. Joining clients do not need it for capacity.
 - Wayfinder writes a hosted session capacity of 3 at four instructions.
-  MorePlayers changes these instructions to write the configured limit.
-- Wayfinder publishes the session as full at 3 players. MorePlayers changes
+  MorePlayersPlus changes these instructions to write the configured limit.
+- Wayfinder publishes the session as full at 3 players. MorePlayersPlus changes
   this threshold to the configured limit.
 - The host pause menu shows `+Party Member` and `Code` below the configured
   limit.
+- When both patch groups apply, MorePlayersPlus activates no MinHook hook.
+  Its Steam, EOS, and full-party hooks are only a fallback.
+- MorePlayersPlus and SkipStartupWarnings are prepared for a Nexus Mods
+  release at version 1.0.0. See [Nexus Mods release plan](plans/nexus-release.md).
 - Wayfinder scales the game for the number of connected players.
 - UE4SS 3.0.1 loads the Lua script and native DLL.
 - The custom `GUObjectArray.lua` signature is required for Wayfinder.
-- `src/mods/MorePlayers/mod.json` defines the MorePlayers package.
+- `src/mods/MorePlayersPlus/mod.json` defines the MorePlayersPlus package.
 - `src/mods/MoreDrops/mod.json` defines the MoreDrops package.
 - `src/mods/Loadouts/mod.json` defines the Loadouts package.
 - `src/mods/SkipStartupWarnings/mod.json` defines the SkipStartupWarnings package.
@@ -120,13 +124,13 @@ flowchart LR
 - SkipStartupWarnings loads only a configured profile that contains save data.
 - An unavailable profile leaves the profile selector open.
 - `README.md` contains the mod catalog and shared contributor instructions.
-- `src/mods/MorePlayers/README.md` contains the complete MorePlayers guide.
+- `src/mods/MorePlayersPlus/README.md` contains the complete MorePlayersPlus guide.
 - `build.ps1` discovers all manifests or selects one with `-Mod`.
 - Each mod receives a separate Nexus Mods directory and ZIP file.
 
 ## Example
 
-MorePlayers configuration:
+MorePlayersPlus configuration:
 
 ```ini
 MaxPlayers=25

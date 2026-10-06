@@ -240,10 +240,10 @@ std::string pointer_details(void* address)
 void log(const std::string& message)
 {
     std::scoped_lock lock(g_log_mutex);
-    const std::string line = "[MorePlayersSteamLimit] " + message + "\n";
+    const std::string line = "[MorePlayersPlus] " + message + "\n";
     std::printf("%s", line.c_str());
     OutputDebugStringA(line.c_str());
-    std::ofstream file("MorePlayersSteamLimit.log", std::ios::app);
+    std::ofstream file("MorePlayersPlus.log", std::ios::app);
     file << line;
 }
 
@@ -957,10 +957,10 @@ class UE4SSMod301
 protected:
     std::vector<std::shared_ptr<void>> GUITabs{};
 public:
-    std::wstring ModName{L"MorePlayersSteamLimit"};
-    std::wstring ModVersion{L"0.1.0"};
-    std::wstring ModDescription{L"Raises Wayfinder's Steam lobby member limit to 25."};
-    std::wstring ModAuthors{L"Local companion implementation"};
+    std::wstring ModName{L"MorePlayersPlus"};
+    std::wstring ModVersion{L"1.0.0"};
+    std::wstring ModDescription{L"Raises the Wayfinder co-op player limit to the configured MaxPlayers value."};
+    std::wstring ModAuthors{L"MorePlayersPlus contributors"};
     std::wstring ModIntendedSDKVersion{L"3.0.1"};
 
     virtual ~UE4SSMod301()

@@ -34,9 +34,17 @@ flowchart TD
 - EOS hook installation starts five seconds after UE4SS reports that Unreal
   initialization is complete.
 - Steam and Wayfinder hook creation runs on the first UE4SS event-loop update.
-- The installer applies the instruction patches first. It creates the Steam
-  hook and the optional full-party fallback hook while disabled and enables
+- The installer applies the instruction patches first. When both patch groups
+  apply, it initializes no MinHook and creates no hook. In the fallback, it
+  creates the Steam hook and the full-party hook while disabled and enables
   them with one MinHook batch operation.
+- A crash dump from 2026-10-02 15:35 UTC shows a null execute fault in
+  `chrome_elf.dll`, called from `kernel32!Thread32Next` inside MinHook
+  `Freeze` during the first `MH_ApplyQueued` of `install()`. That batch held
+  only the Steam hook. The build had 1 crash in 7 starts. The likely cause is
+  a startup race with Chromium's forwarding pointer, which the dump does not
+  prove. The normal path now avoids `MH_ApplyQueued`. A few clean starts
+  cannot prove the fix, because the crash was rare.
 - Activating an individual native hook during `on_program_start` blocked later
   `enabled.txt` mods. Activating the hooks from a concurrent worker caused a
   null execute access violation during Wayfinder initialization.

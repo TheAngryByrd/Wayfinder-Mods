@@ -30,7 +30,7 @@ sequenceDiagram
 - The mod does not create, edit, or replace save files.
 - The mod does not change startup logo video files.
 - The mod does not change `WFAutoSaveOverlay`.
-- The mod loads through `enabled.txt` after MorePlayers completes mod discovery.
+- The mod loads through `enabled.txt` after MorePlayersPlus completes mod discovery.
 - The local deployment does not require a `mods.txt` load-order entry.
 
 ## Runtime source
@@ -58,7 +58,7 @@ end)
 [SkipStartupWarnings] Skipped: autosave
 ```
 
-The current MorePlayers native companion defers hook activation until the UE4SS
+The current MorePlayersPlus native companion defers hook activation until the UE4SS
 event loop starts. This keeps `enabled.txt` discovery unblocked and lets
 SkipStartupWarnings register its two warning hooks normally.
 

@@ -88,7 +88,7 @@ flowchart TD
 ## Path example
 
 ```text
-src/mods/MorePlayers/native/dllmain.cpp -> runtime/session-capacity.md
+src/mods/MorePlayersPlus/native/dllmain.cpp -> runtime/session-capacity.md
 ```
 
 Related: [Project summary](summary.md) and [Project practices](practices.md).
