@@ -26,6 +26,11 @@ using SetLobbyJoinableFn = bool(__cdecl*)(void*, SteamId, bool);
 using InviteUserToLobbyFn = bool(__cdecl*)(void*, SteamId, SteamId);
 using SteamMatchmakingFn = void*(__cdecl*)();
 using SteamFriendsFn = void*(__cdecl*)();
+using SteamUserFn = void*(__cdecl*)();
+using GetSteamIdFn = SteamId(__cdecl*)(void*);
+using GetFriendRichPresenceFn = const char*(__cdecl*)(void*, SteamId, const char*);
+using GetFriendRichPresenceKeyCountFn = int(__cdecl*)(void*, SteamId);
+using GetFriendRichPresenceKeyByIndexFn = const char*(__cdecl*)(void*, SteamId, int);
 using SetRichPresenceFn = bool(__cdecl*)(void*, const char*, const char*);
 using GetNumLobbyMembersFn = int(__cdecl*)(void*, SteamId);
 using GetLobbyMemberLimitFn = int(__cdecl*)(void*, SteamId);
@@ -130,6 +135,16 @@ std::atomic<bool> g_eos_installing{false};
 std::atomic<bool> g_eos_wait_logged{false};
 std::atomic<bool> g_unreal_ready{false};
 std::atomic<std::uint64_t> g_eos_next_attempt{};
+SteamUserFn g_steam_user{};
+GetSteamIdFn g_get_steam_id{};
+GetFriendRichPresenceFn g_get_rich_presence{};
+GetFriendRichPresenceKeyCountFn g_get_rich_presence_key_count{};
+GetFriendRichPresenceKeyByIndexFn g_get_rich_presence_key{};
+std::atomic<bool> g_presence_observer{false};
+// Used only on UE4SS-UpdateThread.
+std::uint64_t g_presence_next_check{};
+std::string g_presence_last;
+constexpr std::uint64_t presence_check_interval_ms{10000};
 std::mutex g_log_mutex;
 constexpr std::uint64_t eos_install_delay_ms{5000};
 
@@ -799,6 +814,50 @@ bool install_eos_diagnostics()
     return true;
 }
 
+// Without the SetLobbyMemberLimit hook, the mod does not publish Steam rich
+// presence. The observer logs the local user's own rich presence keys after
+// each change, so a log shows whether Wayfinder publishes `connect` itself.
+// It reads only through the Steam flat API and needs no hook.
+void init_presence_observer(HMODULE steam)
+{
+    g_steam_friends = reinterpret_cast<SteamFriendsFn>(GetProcAddress(steam, "SteamAPI_SteamFriends_v017"));
+    g_steam_user = reinterpret_cast<SteamUserFn>(GetProcAddress(steam, "SteamAPI_SteamUser_v023"));
+    g_get_steam_id = reinterpret_cast<GetSteamIdFn>(GetProcAddress(steam, "SteamAPI_ISteamUser_GetSteamID"));
+    g_get_rich_presence = reinterpret_cast<GetFriendRichPresenceFn>(
+        GetProcAddress(steam, "SteamAPI_ISteamFriends_GetFriendRichPresence"));
+    g_get_rich_presence_key_count = reinterpret_cast<GetFriendRichPresenceKeyCountFn>(
+        GetProcAddress(steam, "SteamAPI_ISteamFriends_GetFriendRichPresenceKeyCount"));
+    g_get_rich_presence_key = reinterpret_cast<GetFriendRichPresenceKeyByIndexFn>(
+        GetProcAddress(steam, "SteamAPI_ISteamFriends_GetFriendRichPresenceKeyByIndex"));
+    const bool ready = g_steam_friends && g_steam_user && g_get_steam_id && g_get_rich_presence
+        && g_get_rich_presence_key_count && g_get_rich_presence_key;
+    g_presence_observer = ready;
+    log(ready ? "Steam rich presence observer ready"
+              : "Steam rich presence observer unavailable: missing Steam flat API export");
+}
+
+void observe_rich_presence()
+{
+    void* friends = g_steam_friends();
+    void* user = g_steam_user();
+    if (!friends || !user) return;
+    const SteamId self = g_get_steam_id(user);
+    if (!self) return;
+
+    std::string text;
+    const int count = std::clamp(g_get_rich_presence_key_count(friends, self), 0, 32);
+    for (int index = 0; index < count; ++index)
+    {
+        const char* key = g_get_rich_presence_key(friends, self, index);
+        if (!key) continue;
+        text += " " + safe_utf8(key) + "=" + safe_utf8(g_get_rich_presence(friends, self, key));
+    }
+    if (text.empty()) text = " <none>";
+    if (text == g_presence_last) return;
+    g_presence_last = text;
+    log("Steam rich presence keys=" + std::to_string(count) + text);
+}
+
 void install()
 {
     HMODULE steam = GetModuleHandleW(L"steam_api64.dll");
@@ -814,6 +873,16 @@ void install()
     if (!capacity_patched)
         log("Full-party threshold patch not attempted: the session capacity patch is not applied");
     if (!steam) { log("steam_api64.dll not loaded"); return; }
+    if (threshold_patched)
+    {
+        // Both patch groups hold the configured limit, so the Steam and EOS
+        // hooks would only pass the same value through. MinHook's thread
+        // freeze crashed once in chrome_elf.dll during startup (2026-10-02),
+        // so this path activates no hook and does not initialize MinHook.
+        log("MinHook not activated: both instruction patch groups apply");
+        init_presence_observer(steam);
+        return;
+    }
     if (MH_Initialize() != MH_OK) { log("MinHook init failed"); return; }
     g_mh = true;
     // Wayfinder ships Steamworks v157, embeds SteamMatchMaking009, and acquires
@@ -835,13 +904,10 @@ void install()
         "ISteamMatchmaking009::SetLobbyMemberLimit[v31]",
         reinterpret_cast<void*>(&limit_hook),
         reinterpret_cast<void**>(&g_set_limit));
-    // The suppression hook is the fallback for a build where the threshold
-    // patch does not match. With the patch, Wayfinder publishes the full state
-    // only at the configured limit.
+    // This hook path is the fallback for a build where a patch group does not
+    // match. The suppression hook then stops the full publication at 3 players.
     void* full_party_target{};
-    if (threshold_patched)
-        log("Full-party hook not installed: the full-party threshold is the configured limit");
-    const bool full_party_created = !threshold_patched && install_wayfinder_full_party_hook(full_party_target);
+    const bool full_party_created = install_wayfinder_full_party_hook(full_party_target);
 
     const MH_STATUS queue_steam = steam_limit_created
         ? MH_QueueEnableHook(steam_limit_target)
@@ -922,6 +988,19 @@ public:
         }
 
         const std::uint64_t now = GetTickCount64();
+        if (g_presence_observer.load() && now >= g_presence_next_check)
+        {
+            g_presence_next_check = now + presence_check_interval_ms;
+            try
+            {
+                observe_rich_presence();
+            }
+            catch (...)
+            {
+                g_presence_observer = false;
+                log("Steam rich presence observer stopped after an exception");
+            }
+        }
         if (g_install_complete.load() && g_mh.load() && g_unreal_ready.load() && !g_eos_installed.load()
             && now >= g_eos_next_attempt.load())
         {
