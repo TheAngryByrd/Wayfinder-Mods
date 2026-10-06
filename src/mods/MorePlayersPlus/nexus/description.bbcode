@@ -1,0 +1,242 @@
+[size=5][b]MorePlayersPlus[/b][/size]
+
+MorePlayersPlus raises the Wayfinder co-op player limit above 3. The host sets the limit from 3 through 25 players. The limit includes the host. The default limit is 25. Only the host needs the mod, so joining players can use the unmodded game. The mod is for the Windows Steam version of Wayfinder, build 211130. It loads through UE4SS 3.0.1, which you must install separately.
+
+[line]
+[size=4][b]Features[/b][/size]
+
+[list]
+[*]Sets the co-op player limit from 3 through 25 with one value in config.ini.
+[*]Only the host installs the mod. Joining players do not need it.
+[*]Raises the Steam lobby member limit and the online session capacity to the configured limit.
+[*]Keeps the session open until the party reaches the configured limit. Until then, the session browser data, such as difficulty and power level, stays current.
+[*]Keeps the "+Party Member" and "Code" controls of the host visible in the pause menu until the party reaches the limit. The unmodded game hides them at 3 players.
+[*]Sets the party maximum in the Discord party data to the configured limit.
+[*]Writes startup and join diagnostics to two log files.
+[*]Does not change Wayfinder.exe on disk, the game packages, or save files.
+[/list]
+
+[b]How the mod works[/b]
+
+The mod has two parts: a Lua script and a native DLL (dlls\main.dll). The Lua script raises the session, party, and beacon limits through UE4SS. The Lua script also shows the party controls of the host.
+
+The native DLL changes six instructions in the memory of the running Wayfinder process. Four instructions set the session capacity. Two instructions set the full-party threshold. The DLL checks the bytes of all instructions in a group before it changes that group. If the bytes of a group are different, for example after a game update, the DLL changes no instruction in that group. The DLL tries the full-party group only after the session capacity group applies. If a group does not apply, the DLL uses fallback hooks (MinHook). When both groups apply, the DLL activates no MinHook hook. This is the normal mode.
+
+The mod opens no network connection of its own. It contains no download or auto-update code. In the normal mode, Wayfinder itself sends the changed session values to Steam and EOS. In the fallback mode, the DLL also changes Steam and EOS calls of Wayfinder. It also sets the Steam join information (rich presence) of the host. The Digital Extremes backend is not connected in this version of Wayfinder.
+
+[line]
+[size=4][b]Requirements[/b][/size]
+
+[list]
+[*]Wayfinder, Steam version for Windows.
+[*][url=https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1]UE4SS 3.0.1[/url]. Download the file UE4SS_v3.0.1.zip. The MorePlayersPlus archive does not include UE4SS.
+[*]The Wayfinder UE4SS signature file GUObjectArray.lua. The MorePlayersPlus archive includes this file. UE4SS uses it to find the global object array of Wayfinder. Without this file, Lua mods cannot load.
+[/list]
+
+Only the host needs UE4SS and MorePlayersPlus.
+
+[line]
+[size=4][b]Installation[/b][/size]
+
+Vortex does not support Wayfinder. Install the mod manually.
+
+[b]Part 1: Install UE4SS 3.0.1[/b]
+
+[list=1]
+[*]Download [url=https://github.com/UE4SS-RE/RE-UE4SS/releases/download/v3.0.1/UE4SS_v3.0.1.zip]UE4SS_v3.0.1.zip[/url].
+[*]Close Wayfinder.
+[*]Open the Wayfinder installation folder. In Steam, right-click Wayfinder and select Manage > Browse local files.
+[*]Open the folder Atlas\Binaries\Win64.
+[*]If an earlier UE4SS version left an xinput1_3.dll file in this folder, delete it.
+[*]Extract the contents of UE4SS_v3.0.1.zip into Atlas\Binaries\Win64.
+[*]Do not start Wayfinder before you install MorePlayersPlus.
+[/list]
+
+[b]Part 2: Install MorePlayersPlus[/b]
+
+[list=1]
+[*]Close Wayfinder.
+[*]If you installed an earlier unreleased MorePlayers build, delete the folder Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayers. Two copies apply the same changes two times.
+[*]If FuniWF's More Players mod is installed, remove it. Both mods change the same session limits.
+[*]Extract the MorePlayersPlus archive into the Wayfinder installation folder. This folder contains Wayfinder.exe and the Atlas folder.
+[*]If Windows asks to replace files, permit the replacement.
+[/list]
+
+The archive contains an Atlas folder and MorePlayersPlus-README.md. The Atlas folder of the archive must merge with the Atlas folder of Wayfinder.
+
+After the installation, make sure that these files exist:
+[code]Wayfinder\Atlas\Binaries\Win64\dwmapi.dll
+Wayfinder\Atlas\Binaries\Win64\UE4SS.dll
+Wayfinder\Atlas\Binaries\Win64\UE4SS-settings.ini
+Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\enabled.txt
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\config.ini
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\Scripts\main.lua
+Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\dlls\main.dll[/code]
+
+UE4SS 3.0.1 installs the first three files. The MorePlayersPlus archive installs the other files.
+
+You can install SkipStartupWarnings together with MorePlayersPlus. Both archives contain the same signature file. When the second archive replaces this file, the content does not change.
+
+[line]
+[size=4][b]Configuration[/b][/size]
+
+The configuration file is:
+[code]Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus\config.ini[/code]
+
+The default configuration is:
+[code]# Shared by Scripts/main.lua and dlls/main.dll.
+# Supported range: 3 through 25.
+MaxPlayers=25
+PartyUiDiagnostics=0[/code]
+
+[list]
+[*][b]MaxPlayers[/b]: The maximum number of players in the session, including the host. Supported values: 3 through 25. Default: 25.
+[*][b]PartyUiDiagnostics[/b]: Set to 1 to record party UI snapshots in UE4SS.log after each join. With 1, you can press F9 to record one more snapshot. Default: 0. Use 1 only for troubleshooting. The snapshots can stop the game for a short time when players join.
+[/list]
+
+To change the limit:
+[list=1]
+[*]Close Wayfinder.
+[*]Open config.ini in a text editor.
+[*]Set MaxPlayers to a value from 3 through 25.
+[*]Save the file.
+[*]Start Wayfinder.
+[/list]
+
+The Lua script and the native DLL read the same file when Wayfinder starts. Both parts use the same rule for each MaxPlayers line:
+[list]
+[*]The key must be exactly MaxPlayers. The key is case-sensitive.
+[*]The key must be the first text on the line. The mod ignores comment lines such as # MaxPlayers=8.
+[*]You can put spaces or tabs before the key, around the equal sign, and after the value.
+[*]The value must contain only digits. Leading zeros are valid, for example MaxPlayers=0012.
+[*]The value must be from 3 through 25.
+[*]The mod ignores a line that has other text after the value, for example MaxPlayers=10 # note.
+[*]The mod ignores a value that is out of range. It does not change the value to the nearest supported value.
+[*]If more than one line is valid, the last valid line sets the limit.
+[*]If no line is valid, the mod uses 25. Both log files then show a "Config missing/invalid" message. If config.ini does not exist, UE4SS.log shows "Config not found" instead.
+[/list]
+
+This example sets the limit to 12:
+[code]# MaxPlayers=8 example
+MaxPlayers=12[/code]
+
+[line]
+[size=4][b]Confirm that the mod works[/b][/size]
+
+Start Wayfinder. Then open this file:
+[code]Wayfinder\Atlas\Binaries\Win64\UE4SS.log[/code]
+
+Make sure that the file contains lines similar to these:
+[code][MorePlayersPlus] Config MaxPlayers=25
+[MorePlayersPlus] Mod loaded
+[MorePlayersPlus] Online party maximum phase=created group_size=3.0->25.0
+[MorePlayersPlus] Party invite controls hook ready
+[MorePlayersPlus] Engine limits: players=25 party=25[/code]
+
+Load a character into the game. Open the party page in the pause menu. Make sure that UE4SS.log then contains this line:
+[code][MorePlayersPlus] Party invite controls first call players=1 (number) host=true (boolean) probe=shown[/code]
+
+Open this file:
+[code]Wayfinder\Atlas\Binaries\Win64\MorePlayersPlus.log[/code]
+
+The native DLL adds lines to the end of this file at each start. Find the lines from the last start of Wayfinder. Make sure that they include lines that start with this text:
+[code][MorePlayersPlus] Native companion starting
+[MorePlayersPlus] Config MaxPlayers=25
+[MorePlayersPlus] Session capacity patch applied at 4 sites
+[MorePlayersPlus] Full-party threshold patch applied at 2 sites
+[MorePlayersPlus] MinHook not activated: both instruction patch groups apply
+[MorePlayersPlus] Steam rich presence observer ready[/code]
+
+The file also contains other lines between and after these lines. The examples show the default value 25. Your log files show your MaxPlayers value. If MaxPlayers is 3, the native log shows "patch not necessary" instead of "patch applied". This result is correct, because the game already uses 3.
+
+The line "MinHook not activated: both instruction patch groups apply" shows the normal mode. If the native log contains "patch unavailable", the mod uses the fallback mode. Refer to Known limits.
+
+With 3 or more players in the session, UE4SS.log contains lines similar to this line:
+[code][MorePlayersPlus] Party invite controls players=3 limit=25 result=shown[/code]
+
+[line]
+[size=4][b]How players join[/b][/size]
+
+The host starts a public or invite-only game. Players can then join through these methods:
+[list]
+[*]Steam overlay invite (Shift+Tab).
+[*]The "+Party Member" button on the party page of the pause menu. This button opens the Steam overlay invite.
+[*]"Join Game" in the Steam friends list. Refer to Known limits.
+[*]The in-game session browser, for public games.
+[*]The session code. The host finds it under "Code" on the party page of the pause menu.
+[*]Discord. If the session capacity patch does not apply, Discord joins stop at 3 players.
+[/list]
+
+The in-game social-list Invite and the chat Invite do nothing in this version of Wayfinder. These two invites use the Digital Extremes backend, which is not connected. Use one of the methods above.
+
+When the party reaches MaxPlayers, the session is full.
+
+[line]
+[size=4][b]Known limits[/b][/size]
+
+[list]
+[*]Live tests used 3, 4, and 5 players, with map travel at 4 and 5 players. The tests showed no kicks and no network errors. No test used more than 5 players.
+[*]These live tests ran on an earlier internal build. That build made the same six instruction changes. It also activated MinHook hooks for Steam and EOS. Its Steam hook set the Steam join information of the host.
+[*]Version 1.0.0 has not yet been tested with a joining player. In the normal mode, version 1.0.0 activates no MinHook hook. "Join Game" in the Steam friends list then uses only the Steam join information that Wayfinder sets.
+[*]The unmodded game supports 3 players. The tests did not examine each game system with more than 3 players.
+[*]Encounter difficulty and enemy scaling follow the real number of players.
+[*]The session browser card shows a maximum of three player portraits. The session can contain more players.
+[*]An earlier internal build crashed at startup in 1 of 7 starts. The crash occurred during MinHook hook activation. In version 1.0.0, the normal mode does not activate MinHook hooks. Tests have not yet confirmed that the crash cannot occur.
+[*]Fallback mode: A game update can change the instructions that the DLL changes. Then the DLL does not change the instruction groups that are different. It activates MinHook hooks instead. The earlier startup crash occurred during this hook activation. If the full-party threshold patch does not apply, the session browser data can become out of date after the third player joins.
+[/list]
+
+[line]
+[size=4][b]Uninstallation[/b][/size]
+
+SkipStartupWarnings and other UE4SS mods for Wayfinder can use the same signature file.
+
+[list=1]
+[*]Close Wayfinder.
+[*]Delete the folder Wayfinder\Atlas\Binaries\Win64\Mods\MorePlayersPlus.
+[*]Delete the file Wayfinder\MorePlayersPlus-README.md.
+[*]If you do not need the native log, delete the file Wayfinder\Atlas\Binaries\Win64\MorePlayersPlus.log.
+[*]If you also remove UE4SS, delete the file Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua.
+[/list]
+
+Keep GUObjectArray.lua while UE4SS stays installed. To remove UE4SS, refer to the UE4SS documentation.
+
+[line]
+[size=4][b]Troubleshooting[/b][/size]
+
+MorePlayersPlus writes its log lines to two files:
+[code]Wayfinder\Atlas\Binaries\Win64\UE4SS.log
+Wayfinder\Atlas\Binaries\Win64\MorePlayersPlus.log[/code]
+
+[list]
+[*]UE4SS.log contains the lines of the Lua script. UE4SS overwrites UE4SS.log at each start. Copy the file before you start Wayfinder again.
+[*]MorePlayersPlus.log contains the lines of the native DLL. Read the lines from the last start.
+[/list]
+
+[list]
+[*]If UE4SS.log does not exist, check the UE4SS installation and the signature file.
+[*]If UE4SS.log does not contain "Mod loaded", check the MorePlayersPlus folder and enabled.txt.
+[*]If MorePlayersPlus.log does not exist, check MorePlayersPlus\dlls\main.dll.
+[*]If MorePlayersPlus.log contains "build signature mismatch", the Wayfinder executable changed. The line names the instruction group or the full-party hook. The DLL changes no instruction in that group and uses the fallback mode. If the line names the full-party hook, the DLL does not activate that hook.
+[*]If "SetLobbyMemberLimit result=0" appears in the fallback mode, Steam rejected the limit update.
+[*]If Steam rich presence lines are not in MorePlayersPlus.log in the normal mode, host a game and wait 10 seconds.
+[*]If only one player disconnects, also collect the Wayfinder logs of that player.
+[/list]
+
+For a Wayfinder crash, collect these files:
+[code]%LOCALAPPDATA%\Wayfinder\Saved\Logs\Atlas.log
+%LOCALAPPDATA%\Wayfinder\Saved\Crashes[/code]
+
+The logs can contain player names, online IDs, and lobby IDs. MorePlayersPlus.log also contains your installation path and your own Steam join information. The installation path can contain your Windows user name. Before you share a log, remove the names and IDs of other players. Also remove your own data that you do not want to share.
+
+[line]
+[size=4][b]Credits and licenses[/b][/size]
+
+[list]
+[*]The Lua session-limit approach is based on [url=https://www.nexusmods.com/wayfinder/mods/9]More Players by FuniWF[/url]. MorePlayersPlus uses this approach with the permission of FuniWF. MorePlayersPlus adds the native companion, the instruction patches, and the party controls fix.
+[*]The Wayfinder signature in GUObjectArray.lua comes from FuniWF's UE4SS setup guide for Wayfinder. FuniWF links this guide from the More Players mod page.
+[*]MinHook by Tsuda Kageyu, BSD 2-clause license. MinHook contains Hacker Disassembler Engine 32 C and 64 C by Vyacheslav Patkov, BSD 2-clause license. The license notices are in Mods\MorePlayersPlus\licenses\MinHook-LICENSE.txt.
+[*]UE4SS (RE-UE4SS project), MIT license. The license notice is in Mods\MorePlayersPlus\licenses\UE4SS-LICENSE.txt. The archive does not include UE4SS binaries.
+[*]Wayfinder is a game by Airship Syndicate. Airship Syndicate does not make or support this mod.
+[*]An AI tool (Claude) generated much of the code and of this page.
+[/list]

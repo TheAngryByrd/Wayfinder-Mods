@@ -72,7 +72,11 @@ src/mods/<ModName>/content/
 src/mods/<ModName>/native/
 src/mods/<ModName>/umg/
 src/mods/<ModName>/validate.ps1
+src/mods/<ModName>/nexus/
 ```
+
+The build does not read or package the optional `nexus` folder. It holds the
+Nexus Mods page kit. See [Nexus Mods page kit](nexus-page-kit.md).
 
 The build copies each `content` child into `Mods/<ModName>`.
 The build copies an optional native target to `dlls/main.dll`.

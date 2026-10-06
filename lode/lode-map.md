@@ -34,6 +34,7 @@ flowchart TD
     Map --> Distribution[distribution/summary.md]
     Distribution --> BuildSystem[distribution/build-system.md]
     Distribution --> ModIo[distribution/mod-io.md]
+    Distribution --> NexusKit[distribution/nexus-page-kit.md]
 ```
 
 ## Core
@@ -63,6 +64,7 @@ flowchart TD
 - [Distribution summary](distribution/summary.md)
 - [Multi-mod build system](distribution/build-system.md)
 - [mod.io distribution](distribution/mod-io.md)
+- [Nexus Mods page kit](distribution/nexus-page-kit.md)
 
 ## Startup
 

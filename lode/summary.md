@@ -121,8 +121,6 @@ flowchart LR
 - SkipStartupWarnings uses Wayfinder's Airship menu removal path.
 - SkipStartupWarnings leaves the in-game autosave indicator active.
 - SkipStartupWarnings leaves a warning visible when its normal removal path fails.
-- SkipStartupWarnings loads only a configured profile that contains save data.
-- An unavailable profile leaves the profile selector open.
 - `README.md` contains the mod catalog and shared contributor instructions.
 - `src/mods/MorePlayersPlus/README.md` contains the complete MorePlayersPlus guide.
 - `build.ps1` discovers all manifests or selects one with `-Mod`.

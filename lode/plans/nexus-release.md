@@ -18,24 +18,44 @@ flowchart TD
 
 ## Steps
 
-1. Port the config-parser fix onto `master`. The native and Lua parsers then
-   accept the same `MaxPlayers` lines, and the last valid line wins.
+The work happens on branch `nexus-release` in the worktree
+`Wayfinder-MorePlayers-release`. The branch is not merged into `master`.
+
+| Step | Status |
+|---|---|
+| 1. Config-parser fix | Done on `nexus-release` |
+| 2. Startup crash fix | Done on `nexus-release`, not runtime-tested |
+| 3. Runtime tests | Pending |
+| 4. Build | Built from `nexus-release`; rebuild after step 3 |
+| 5. Inspect ZIP files | Done for the current build |
+| 6. Page kits | Done: `src/mods/<ModName>/nexus/` |
+| 7. User decisions | Partly done, see below |
+| 8. Upload | Pending, user action |
+
+1. Port the config-parser fix. The native and Lua parsers then accept the
+   same `MaxPlayers` lines, and the last valid line wins.
 2. Remove the MinHook startup activation from the normal MorePlayersPlus path.
    See [Startup crash fix](#startup-crash-fix).
-3. Test a solo start, a Steam friends list `Join Game`, and a Steam overlay
-   invite with a real friend.
+3. Test a solo start, a Steam friends list `Join Game`, a Steam overlay
+   invite with a real friend, and both mods together. Deploy only with the
+   user's approval. First move `Mods\MorePlayers` to a backup outside `Mods`.
 4. Build both packages with `build.ps1 -Mod MorePlayersPlus,SkipStartupWarnings`
-   in a clean worktree of `master`.
+   after the last README change.
 5. Inspect each ZIP:
    - no `source` folder and no Loadouts files;
    - the Wayfinder UE4SS signature file is present;
    - the packaged README is identical to the source README;
    - the MinHook license notice ships with `main.dll`.
-6. Write the Nexus page kit for each mod: summary, BBCode description,
-   requirements, install and uninstall steps, known issues, changelog, and
-   file description.
+6. Write the Nexus page kit for each mod. See
+   [Nexus Mods page kit](../distribution/nexus-page-kit.md).
 7. Get the user's decisions on credit, permission, and version numbers.
 8. The user creates the pages, uploads the ZIP files, and publishes.
+
+The READMEs and pages contain two sentences that step 3 makes false:
+"Version 1.0.0 has not yet been tested with a joining player." and "Version
+1.0.0 of the two mods has not yet been tested together." Delete them after the
+tests pass. Then rebuild the archives. If `Join Game` fails, remove it from
+the join methods.
 
 ## Startup crash fix
 
@@ -87,6 +107,11 @@ lines. A few clean starts cannot prove a 1-in-7 crash fixed.
   origin of the Lua session-limit approach.
 - A user who installed an earlier MorePlayers build must delete
   `Mods\MorePlayers`. Two copies would apply the patches and hooks twice.
+- Both pages use the tags `AI-Generated Content` and `AI Media`.
+- Open: FuniWF must confirm in a Nexus forum private message that the
+  permission covers the `GUObjectArray.lua` signature in both mods and the
+  name MorePlayersPlus.
+- Open: Donation Points.
 
 Related: [Roadmap](roadmap.md), [Distribution](../distribution/summary.md),
 [Runtime stability](../runtime/stability.md), and

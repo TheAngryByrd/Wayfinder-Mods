@@ -35,6 +35,13 @@ flowchart LR
 - User configuration instructions point to the installed `config.ini` file.
 - Build instructions identify `src/mods/MorePlayersPlus/content/config.ini`.
 
+## Nexus Mods pages
+
+MorePlayersPlus and SkipStartupWarnings each have a page kit in
+`src/mods/<ModName>/nexus/`. The shared `GUObjectArray.lua` signature comes
+from FuniWF's UE4SS setup guide. Both pages and both READMEs credit FuniWF for
+it. See [Nexus Mods page kit](nexus-page-kit.md).
+
 ## Build example
 
 ```powershell

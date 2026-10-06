@@ -43,6 +43,9 @@
 - **Logic mod** - A cooked Blueprint Pak that UE4SS loads from `Atlas/Content/Paks/LogicMods`.
 - **Startup warning page** - A UMG page that Wayfinder shows for epilepsy or autosave information before the main menu.
 - **In-game autosave indicator** - The gameplay overlay that shows when Wayfinder writes save data.
+- **Page kit** - The Nexus Mods page text and upload-form values in `src/mods/<ModName>/nexus/`. The build does not package it.
+- **Normal mode** - The MorePlayersPlus state in which both instruction patch groups apply and the native DLL activates no MinHook hook.
+- **Fallback mode** - The MorePlayersPlus state in which a patch group does not apply and the native DLL activates MinHook hooks.
 
 ```mermaid
 flowchart LR

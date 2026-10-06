@@ -1,0 +1,169 @@
+[size=5][b]SkipStartupWarnings[/b][/size]
+
+SkipStartupWarnings closes the epilepsy and autosave warning pages when Wayfinder starts. Each page has an on/off setting. The mod is for the Windows Steam version of Wayfinder, build 211130. It loads through UE4SS 3.0.1, which you must install separately.
+
+[line]
+[size=4][b]Features[/b][/size]
+
+[list]
+[*]Closes the epilepsy warning page at startup.
+[*]Closes the autosave warning page at startup.
+[*]Each page has its own setting in config.ini.
+[*]Leaves the title prompt, the profile selector, the main menu, and the in-game autosave indicator unchanged.
+[*]Does not change Wayfinder.exe, the game packages, the videos, or save files.
+[*]The archive contains a Lua script, a configuration file, an enabled.txt file, a UE4SS signature file, and a README file. It contains no DLL and no executable.
+[/list]
+
+[line]
+[size=4][b]Requirements[/b][/size]
+
+[list]
+[*]Wayfinder, Steam version for Windows.
+[*][url=https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1]UE4SS 3.0.1[/url]. Download the file UE4SS_v3.0.1.zip. The SkipStartupWarnings archive does not include UE4SS.
+[*]The Wayfinder UE4SS signature file GUObjectArray.lua. The SkipStartupWarnings archive includes this file. UE4SS uses it to find the global object array of Wayfinder. Without this file, Lua mods cannot load.
+[/list]
+
+[line]
+[size=4][b]Installation[/b][/size]
+
+Vortex does not support Wayfinder. Install the mod manually.
+
+[b]Part 1: Install UE4SS 3.0.1[/b]
+
+If UE4SS 3.0.1 is already installed for Wayfinder, go to Part 2.
+
+[list=1]
+[*]Download [url=https://github.com/UE4SS-RE/RE-UE4SS/releases/download/v3.0.1/UE4SS_v3.0.1.zip]UE4SS_v3.0.1.zip[/url].
+[*]Close Wayfinder.
+[*]Open the Wayfinder installation folder. In Steam, right-click Wayfinder and select Manage > Browse local files.
+[*]Open the folder Atlas\Binaries\Win64.
+[*]If an earlier UE4SS version left an xinput1_3.dll file in this folder, delete it.
+[*]Extract the contents of UE4SS_v3.0.1.zip into Atlas\Binaries\Win64.
+[*]Do not start Wayfinder before you install SkipStartupWarnings.
+[/list]
+
+[b]Part 2: Install SkipStartupWarnings[/b]
+
+[list=1]
+[*]Close Wayfinder.
+[*]Extract the SkipStartupWarnings archive into the Wayfinder installation folder. This folder contains Wayfinder.exe and the Atlas folder.
+[*]If Windows asks to replace files, permit the replacement.
+[/list]
+
+The archive contains an Atlas folder and SkipStartupWarnings-README.md. The Atlas folder of the archive must merge with the Atlas folder of Wayfinder.
+
+After the installation, make sure that these files exist:
+[code]Wayfinder\Atlas\Binaries\Win64\dwmapi.dll
+Wayfinder\Atlas\Binaries\Win64\UE4SS.dll
+Wayfinder\Atlas\Binaries\Win64\UE4SS-settings.ini
+Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua
+Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings\enabled.txt
+Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings\config.ini
+Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings\Scripts\main.lua[/code]
+
+UE4SS 3.0.1 installs the first three files. The SkipStartupWarnings archive installs the other files.
+
+[b]Use with other mods[/b]
+
+SkipStartupWarnings loads through its own enabled.txt file. It needs no mods.txt entry. MorePlayersPlus contains the same signature file. When one archive replaces this file, the content does not change. SkipStartupWarnings can also run with the No-Intro video replacer. The video replacer controls the logo videos. SkipStartupWarnings controls the two warning pages.
+
+[line]
+[size=4][b]Configuration[/b][/size]
+
+The configuration file is:
+[code]Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings\config.ini[/code]
+
+The default configuration skips both warning pages:
+[code]SkipEpilepsyWarning=1
+SkipAutoSaveWarning=1[/code]
+
+[list]
+[*][b]SkipEpilepsyWarning[/b]: Set to 1 to close the epilepsy warning page. Set to 0 to show it. Default: 1.
+[*][b]SkipAutoSaveWarning[/b]: Set to 1 to close the autosave warning page. Set to 0 to show it. Default: 1.
+[/list]
+
+Restart Wayfinder after each change. The mod uses these rules for each line:
+[list]
+[*]The key is case-sensitive.
+[*]The value must be 0 or 1.
+[*]You can put spaces or tabs before the key, around the equal sign, and after the value.
+[*]The mod ignores a line that has other text after the value.
+[*]If more than one line is valid for a key, the last valid line sets the value.
+[*]If a key has no valid line, the mod uses 1.
+[*]If config.ini does not exist, UE4SS.log shows "Config not found". The mod then closes both pages.
+[/list]
+
+[line]
+[size=4][b]Confirm that the mod works[/b][/size]
+
+Start Wayfinder. The game must continue without the epilepsy and autosave warning pages. Use the normal controls at the title prompt and in all later menus.
+
+Open this file:
+[code]Wayfinder\Atlas\Binaries\Win64\UE4SS.log[/code]
+
+Make sure that the file contains these lines:
+[code][SkipStartupWarnings] Config epilepsy=enabled autosave=enabled
+[SkipStartupWarnings] Hook ready: epilepsy
+[SkipStartupWarnings] Hook ready: autosave
+[SkipStartupWarnings] Skipped: epilepsy
+[SkipStartupWarnings] Skipped: autosave[/code]
+
+Other UE4SS lines can show between these lines. For each page that you set to 0, the log contains the related line:
+[code][SkipStartupWarnings] Epilepsy warning skip disabled
+[SkipStartupWarnings] Autosave warning skip disabled[/code]
+
+[line]
+[size=4][b]Known limits[/b][/size]
+
+[list]
+[*]If a Wayfinder update changes the warning pages, the hooks can fail. UE4SS.log then shows "Hook unavailable", and the warning page stays.
+[*]If the page transition or the menu removal fails, the warning page stays available. Continue with the normal controls.
+[*]Version 1.0.0 of SkipStartupWarnings and MorePlayersPlus has not yet been tested together.
+[/list]
+
+[line]
+[size=4][b]Uninstallation[/b][/size]
+
+MorePlayersPlus and other UE4SS mods for Wayfinder can use the same signature file.
+
+To disable the mod and keep its configuration, delete the file Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings\enabled.txt.
+
+To remove the mod:
+[list=1]
+[*]Close Wayfinder.
+[*]Delete the folder Wayfinder\Atlas\Binaries\Win64\Mods\SkipStartupWarnings.
+[*]Delete the file Wayfinder\SkipStartupWarnings-README.md.
+[*]If you also remove UE4SS, delete the file Wayfinder\Atlas\Binaries\Win64\UE4SS_Signatures\GUObjectArray.lua.
+[/list]
+
+Keep GUObjectArray.lua while UE4SS stays installed. UE4SS needs this file to load Lua mods in Wayfinder. To remove UE4SS, refer to the UE4SS documentation.
+
+[line]
+[size=4][b]Troubleshooting[/b][/size]
+
+If a warning page stays visible, search UE4SS.log for the text SkipStartupWarnings. UE4SS overwrites UE4SS.log at each start. Copy the file before you start Wayfinder again.
+
+[list]
+[*]"Hook unavailable" means that the current Wayfinder build changed or did not load the expected Blueprint function.
+[*]"Airship menu library is unavailable" means that the mod could not access the menu service of Wayfinder.
+[*]"Skip canceled" or "Unable to finish" means that the mod could not close the page. The warning page stays available.
+[*]"Unable to remove" or "did not remove" means that the menu removal failed. The warning page stays available.
+[*]If UE4SS.log does not contain "Starting Lua mod 'SkipStartupWarnings'", make sure that enabled.txt exists.
+[*]If the folder Mods\MorePlayers exists, delete it. This folder is from an earlier unreleased build. An old build can stop UE4SS from starting later Lua mods.
+[/list]
+
+For a Wayfinder crash, collect these files:
+[code]%LOCALAPPDATA%\Wayfinder\Saved\Logs\Atlas.log
+%LOCALAPPDATA%\Wayfinder\Saved\Crashes[/code]
+
+Atlas.log can contain player names and online IDs. Remove them before you post the log in public.
+
+[line]
+[size=4][b]Credits and licenses[/b][/size]
+
+[list]
+[*]The Wayfinder signature in GUObjectArray.lua comes from FuniWF's UE4SS setup guide for Wayfinder. FuniWF links this guide from the [url=https://www.nexusmods.com/wayfinder/mods/9]More Players[/url] mod page.
+[*]UE4SS (RE-UE4SS project) loads this mod. The archive does not include UE4SS binaries.
+[*]Wayfinder is a game by Airship Syndicate. Airship Syndicate does not make or support this mod.
+[*]An AI tool (Claude) generated much of the code and of this page.
+[/list]
